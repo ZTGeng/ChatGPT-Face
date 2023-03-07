@@ -1,2 +1,4 @@
 Flask
 openai
+python-dotenv
+APScheduler

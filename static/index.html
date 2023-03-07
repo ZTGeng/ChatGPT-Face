@@ -28,7 +28,7 @@
                         <label class="form-check-label me-2" for="apiKeyChoiceCustom">
                             {{ api_key_choice_custom }}
                         </label>
-                        <input class="me-2" type="text" placeholder="API-KEY" aria-label="API-KEY">
+                        <input class="me-2" type="text" placeholder="API-KEY" v-model="api_key_custom" aria-label="API-KEY">
                         <a class="form-check-label fw-bold me-2 alert-link" href="https://openai.com/pricing" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom" :title="api_key_explanation">&#9432;</a>
                     </div>
                 </form>
@@ -39,11 +39,9 @@
             <div class="col col-4"></div>
             <div class="col" style="min-height: 100%">
                 <div class="d-inline-flex flex-column justify-content-end" style="width: 100%; min-height: 100%;">
-                    <div v-for="message in messages" class="mb-3" :class="message.from === 'bot' ? 'me-auto' : 'ms-auto'">
-                        <div class="card" :class="message.from === 'bot' ? 'bg-light text-dark me-3' : 'bg-primary text-white ms-3'">
-                            <div class="card-body">
-                                {{ message.text }}
-                            </div>
+                    <div v-for="message in messages" class="mb-3" :class="message.type === 'bot' ? 'me-auto' : message.type === 'human' ? 'ms-auto' : 'mx-auto'">
+                        <div class="card" :class="message.type === 'bot' ? 'bg-light text-dark me-3' : message.type === 'human' ? 'bg-primary text-white ms-3' : 'bg-danger text-white'">
+                            <div class="card-body text-pre" v-html="message.text"></div>
                         </div>
                     </div>
                     <div style="height: 200px"></div>
@@ -57,8 +55,8 @@
                     <textarea type="text" class="form-control me-2" aria-label="Message" aria-describedby="send-button" style="max-height: 150px;"
                         :placeholder="message_input_placeholder" 
                         v-model="message"
-                        @keyup.enter.shift="getResponse"></textarea>
-                    <button class="btn btn-outline-secondary" type="button" id="send-button" @click="getResponse">{{ message_button_send }}</button>
+                        @keydown.enter.shift.prevent="sendMessages "></textarea>
+                    <button class="btn btn-outline-secondary" type="button" id="send-button" @click="sendMessages" :disabled="state !== states.IDLE">{{ message_button_send }}</button>
                 </div>
             </div>
         </nav>
@@ -67,8 +65,15 @@
     </div>
 
     <script>
-
-        const { createApp } = Vue
+        const BOT_STATE = {
+            IDLE: 'idle',
+            LISTENING: 'listening',
+            TYPING: 'typing',
+            SPEAKING: 'speaking',
+            DRAWING: 'drawing',
+            ERROR: 'error'
+        };
+        const { createApp } = Vue;
         const app = createApp({
             data() {
                 const resources = navigator.language.slice(0, 2) === "zh" ?
@@ -84,6 +89,14 @@
 了解详细信息请点击。`,
                     message_input_placeholder: 'Shift + Enter 发送',
                     message_button_send: '发送',
+                    server_error_message: '服务器发生错误，请稍后再试。',
+                    error_codes: {
+                        0: '发生了未知错误，请稍后再试。',
+                        1: '本站 API-KEY 当前小时的流量已用完，请在下一个整点重试。',
+                        2: '您提供的 API-KEY 无效。',
+                        3: 'API  因访问太过频繁而被暂时限制使用，请稍后再试。',
+                        4: 'OPENAI 服务器响应超时，请稍后再试。',
+                    },
                 } :
                 {
                     page_title: 'Open AI Chatting',
@@ -97,93 +110,110 @@ It is not recommended to use your own API-KEY on untrusted sites.
 Click for more information.`,
                     message_input_placeholder: 'Shift + Enter to send',
                     message_button_send: 'Send',
-                }
+                    server_error_message: 'Server error, please try again later.',
+                    error_codes: {
+                        0: 'An unknown error occurred, please try again later.',
+                        1: 'The hourly traffic of the API-KEY on this site has been used up, please try again at the next hour.',
+                        2: 'Your API-KEY is invalid.',
+                        3: 'The API usage is temporarily restricted due to excessive access, please try again later.',
+                        4: 'OPENAI server response timed out, please try again later.',
+                    },
+                };
                 const props = {
                     api_key_choice: 'default',
+                    api_key_custom: '',
                     message: '',
-                    messages: [
-                        {
-                            text: 'Hello, I am a bot.',
-                            from: 'bot'
-                        },
-                        {
-                            text: 'How are you?',
-                            from: 'human'
-                        },
-                        {
-                            text: 'I am fine, thank you.',
-                            from: 'bot'
-                        },
-                        {
-                            text: 'What is your name?',
-                            from: 'human'
-                        },
-                        {
-                            text: 'My name is Open AI.',
-                            from: 'bot'
-                        },
-                        {
-                            text: 'Hello, I am a bot.',
-                            from: 'bot'
-                        },
-                        {
-                            text: 'How are you?',
-                            from: 'human'
-                        },
-                        {
-                            text: 'I am fine, thank you.',
-                            from: 'bot'
-                        },
-                        {
-                            text: 'What is your name?',
-                            from: 'human'
-                        },
-                        {
-                            text: 'My name is Open AI.',
-                            from: 'bot'
-                        },
-                        {
-                            text: 'Hello, I am a bot.',
-                            from: 'bot'
-                        },
-                        {
-                            text: 'How are you?',
-                            from: 'human'
-                        },
-                        {
-                            text: 'I am fine, thank you.',
-                            from: 'bot'
-                        },
-                        {
-                            text: 'What is your name?',
-                            from: 'human'
-                        },
-                        // {
-                    ],
-                }
-                return { ...resources, ...props}
+                    socket: null,
+                    states: BOT_STATE,
+                    state: BOT_STATE.IDLE,
+                    messages: [],
+                };
+                return { ...resources, ...props};
             },
             methods: {
-                async getResponse() {
-                    const response = await fetch('/api/chatting', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            message: this.message
-                        })
-                    })
-                    const data = await response.json()
-                    this.message = ''
+                sendMessages() {
+                    if (this.message === '') {
+                        return
+                    }
+                    if (this.state !== BOT_STATE.IDLE) {
+                        return
+                    }
+
+                    const data = {
+                        key_type: this.api_key_choice,
+                        message: this.message,
+                    }
+                    if (this.api_key_choice === 'custom') {
+                        data.api_key = this.api_key_custom;
+                    }
                     this.messages.push({
-                        text: data.message,
-                        from: 'bot'
-                    })
-                }
-            }
-        })
-        app.mount('#app')
+                        text: this.decorateMessage(this.message),
+                        type: 'human'
+                    });
+                    this.message = '';
+                    this.state = BOT_STATE.LISTENING;
+
+                    // this.initWebSocket();
+                    
+                    axios.post('/api/message', data)
+                        .then(response => {
+                            // this.state = BOT_STATE.TYPING;
+                            // initWebSocket();
+                            this.state = BOT_STATE.IDLE;
+                            if (response.data.error_code) {
+                                this.messages.push({
+                                    text: this.error_codes[response.data.error_code],
+                                    type: 'error'
+                                });
+                                return
+                            }
+                            this.messages.push({
+                                text: this.decorateMessage(response.data.message),
+                                type: 'bot'
+                            });
+                        })
+                        .catch(error => {
+                            this.messages.push({
+                                text: this.server_error_message,
+                                type: 'error'
+                            });
+                            this.state = BOT_STATE.IDLE;
+                            console.log(error);
+                        });
+                },
+                decorateMessage(message) {
+                    var newMessage = '';
+                    message.trim().split("```").forEach((item, index) => {
+                        if (index % 2 === 1) {
+                            newMessage += "<pre class='mb-0 pb-3 px-3 bg-dark text-white'><code>" + item.replace(/\&/g, "&amp;")
+                                .replace(/\\/g, "&#92;")
+                                .replace(/\</g, "&lt;")
+                                .replace(/\>/g, "&gt;")
+                                .replace(/\"/g, "&quot;")
+                                .replace(/\'/g, "&apos;") + "</code></pre>";
+                        } else {
+                            newMessage += item.replace(/\&/g, "&amp;")
+                                .replace(/\\/g, "&#92;")
+                                .replace(/\</g, "&lt;")
+                                .replace(/\>/g, "&gt;")
+                                .replace(/\"/g, "&quot;")
+                                .replace(/\'/g, "&apos;")
+                                .replace(/\n\n/g, "<br>")
+                                .replace(/\n/g, "<br>");
+                        }
+                    });
+                    return newMessage;
+                },
+                // initWebSocket() {
+                //     this.socket = new WebSocket('ws://localhost:80/ws');
+                //     this.socket.onmessage = event => {
+                //         const message = JSON.parse(event.data);
+                //         this.messages.push(message);
+                //     }
+                // }
+            },
+        });
+        app.mount('#app');
     </script>
 </body>
 </html>
