@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Open AI Chatting</title>
     <meta name="author" content="Geng">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" crossorigin="anonymous">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link href="https://unpkg.com/video.js/dist/video-js.css" rel="stylesheet">
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 </head>
@@ -36,15 +38,21 @@
         </nav>
         
         <div class="row" style="min-height: 100%">
-            <div class="col col-4"></div>
+            <div class="col col-4" style="min-height: 100%">
+                <div class="d-inline-flex flex-column justify-content-end" style="width: 100%; min-height: 100%;">
+                    <video id="robot-video" class="video-js mb-3"></video>
+                    <div style="height: 200px"></div>
+                </div>
+            </div>
             <div class="col" style="min-height: 100%">
                 <div class="d-inline-flex flex-column justify-content-end" style="width: 100%; min-height: 100%;">
+                    <div style="height: 200px"></div>
                     <div v-for="message in messages" class="mb-3" :class="message.type === 'bot' ? 'me-auto' : message.type === 'human' ? 'ms-auto' : 'mx-auto'">
                         <div class="card" :class="message.type === 'bot' ? 'bg-light text-dark me-3' : message.type === 'human' ? 'bg-primary text-white ms-3' : 'bg-danger text-white'">
                             <div class="card-body text-pre" v-html="message.text"></div>
                         </div>
                     </div>
-                    <div style="height: 200px"></div>
+                    <div style="min-height: 200px"></div>
                 </div>
             </div>
         </div>
@@ -64,7 +72,10 @@
 
     </div>
 
+    <script src="https://unpkg.com/video.js/dist/video.js"></script>
+    
     <script>
+        let player = null; // 使用全局变量是因为 video.js 的一个 bug。详见 https://github.com/videojs/video.js/issues/7418
         const BOT_STATE = {
             IDLE: 'idle',
             LISTENING: 'listening',
@@ -94,7 +105,7 @@
                         0: '发生了未知错误，请稍后再试。',
                         1: '本站 API-KEY 当前小时的流量已用完，请在下一个整点重试。',
                         2: '您提供的 API-KEY 无效。',
-                        3: 'API  因访问太过频繁而被暂时限制使用，请稍后再试。',
+                        3: 'API 因访问太过频繁而被暂时限制使用，请稍后再试。',
                         4: 'OPENAI 服务器响应超时，请稍后再试。',
                     },
                 } :
@@ -127,6 +138,21 @@ Click for more information.`,
                     states: BOT_STATE,
                     state: BOT_STATE.IDLE,
                     messages: [],
+                    videoOptions: {
+                        width: 256,
+                        height: 256,
+                        poster: 'static/face_2.jpg',
+                        autoplay: false,
+                        controls: true,
+                        sources: [
+                            // {
+                            //     src: 'temp/hls/output_hls.m3u8',
+                            //     type: 'application/x-mpegURL'
+                                // src: 'static/output200.mp4',
+                                // type: 'video/mp4'
+                            // }
+                        ]
+                    }
                 };
                 return { ...resources, ...props};
             },
@@ -152,8 +178,6 @@ Click for more information.`,
                     });
                     this.message = '';
                     this.state = BOT_STATE.LISTENING;
-
-                    // this.initWebSocket();
                     
                     axios.post('/api/message', data)
                         .then(response => {
@@ -181,36 +205,40 @@ Click for more information.`,
                             console.log(error);
                         });
                 },
+                test() {
+                    player.src({
+                        // src: 'temp/hls/12l5c_hls.m3u8',
+                        // type: 'application/x-mpegURL'
+                        src: 'temp/output200_fps15.mp4',
+                        type: 'video/mp4'
+                    });
+                    // this.player.load();
+                    player.play();
+                },
                 decorateMessage(message) {
                     var newMessage = '';
                     message.trim().split("```").forEach((item, index) => {
                         if (index % 2 === 1) {
-                            newMessage += "<pre class='mb-0 pb-3 px-3 bg-dark text-white'><code>" + item.replace(/\&/g, "&amp;")
-                                .replace(/\\/g, "&#92;")
-                                .replace(/\</g, "&lt;")
-                                .replace(/\>/g, "&gt;")
-                                .replace(/\"/g, "&quot;")
-                                .replace(/\'/g, "&apos;") + "</code></pre>";
+                            newMessage += "<pre class='mb-0 pb-3 px-3 bg-dark text-white'><code>" + item + "</code></pre>";
                         } else {
-                            newMessage += item.replace(/\&/g, "&amp;")
-                                .replace(/\\/g, "&#92;")
-                                .replace(/\</g, "&lt;")
-                                .replace(/\>/g, "&gt;")
-                                .replace(/\"/g, "&quot;")
-                                .replace(/\'/g, "&apos;")
-                                .replace(/\n\n/g, "<br>")
-                                .replace(/\n/g, "<br>");
+                            // “<br>”数等于连续的“\n”数除以 2 向上取整
+                            newMessage += item.replace(/\n\n/g, "<br>").replace(/\n/g, "<br>");
                         }
                     });
                     return newMessage;
                 },
-                // initWebSocket() {
-                //     this.socket = new WebSocket('ws://localhost:80/ws');
-                //     this.socket.onmessage = event => {
-                //         const message = JSON.parse(event.data);
-                //         this.messages.push(message);
-                //     }
-                // }
+            },
+            mounted() {
+                player = videojs(document.getElementById('robot-video'), this.videoOptions, () => {
+                    // this.player.log('onPlayerReady', this);
+                    console.log('onPlayerReady')
+                });
+                player.removeChild('BigPlayButton');
+                player.getChild('ControlBar').removeChild('fullscreenToggle');
+                player.on('ended', () => {
+                    player.hasStarted(false);
+                });
+                // player.play();
             },
         });
         app.mount('#app');

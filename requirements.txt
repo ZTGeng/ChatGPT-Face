@@ -2,3 +2,4 @@ Flask
 openai
 python-dotenv
 APScheduler
+google-cloud-texttospeech
