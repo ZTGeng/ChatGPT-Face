@@ -1,5 +1,8 @@
+librosa
 Flask
 openai
 python-dotenv
 APScheduler
 google-cloud-texttospeech
+opencv-python
+torch

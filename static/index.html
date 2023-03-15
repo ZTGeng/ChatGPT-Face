@@ -8,9 +8,9 @@
     <meta name="author" content="Geng">
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-    <link href="https://unpkg.com/video.js/dist/video-js.css" rel="stylesheet">
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <link href="https://vjs.zencdn.net/8.0.4/video-js.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 </head>
 <body>
     <div id="app" class="container" style="height: 100vh">
@@ -64,7 +64,7 @@
                         :placeholder="message_input_placeholder" 
                         v-model="message"
                         @keydown.enter.shift.prevent="sendMessages "></textarea>
-                    <button class="btn btn-outline-secondary" type="button" id="send-button" @click="sendMessages" :disabled="state !== states.IDLE">{{ message_button_send }}</button>
+                    <button class="btn btn-outline-secondary" type="button" id="send-button" @click="sendMessages" :disabled="is_busy">{{ message_button_send }}</button>
                 </div>
             </div>
         </nav>
@@ -72,18 +72,10 @@
 
     </div>
 
-    <script src="https://unpkg.com/video.js/dist/video.js"></script>
+    <script src="https://vjs.zencdn.net/8.0.4/video.min.js"></script>
     
     <script>
         let player = null; // 使用全局变量是因为 video.js 的一个 bug。详见 https://github.com/videojs/video.js/issues/7418
-        const BOT_STATE = {
-            IDLE: 'idle',
-            LISTENING: 'listening',
-            TYPING: 'typing',
-            SPEAKING: 'speaking',
-            DRAWING: 'drawing',
-            ERROR: 'error'
-        };
         const { createApp } = Vue;
         const app = createApp({
             data() {
@@ -135,13 +127,12 @@ Click for more information.`,
                     api_key_custom: '',
                     message: '',
                     socket: null,
-                    states: BOT_STATE,
-                    state: BOT_STATE.IDLE,
+                    is_busy: false,
                     messages: [],
                     videoOptions: {
                         width: 256,
                         height: 256,
-                        poster: 'static/face_2.jpg',
+                        poster: '/api/face_img',
                         autoplay: false,
                         controls: true,
                         sources: [
@@ -161,7 +152,7 @@ Click for more information.`,
                     if (this.message === '') {
                         return
                     }
-                    if (this.state !== BOT_STATE.IDLE) {
+                    if (this.is_busy) {
                         return
                     }
 
@@ -177,13 +168,11 @@ Click for more information.`,
                         type: 'human'
                     });
                     this.message = '';
-                    this.state = BOT_STATE.LISTENING;
+                    this.is_busy = true;
                     
                     axios.post('/api/message', data)
                         .then(response => {
-                            // this.state = BOT_STATE.TYPING;
-                            // initWebSocket();
-                            this.state = BOT_STATE.IDLE;
+                            this.is_busy = false;
                             if (response.data.error_code) {
                                 this.messages.push({
                                     text: this.error_codes[response.data.error_code],
@@ -195,21 +184,25 @@ Click for more information.`,
                                 text: this.decorateMessage(response.data.message),
                                 type: 'bot'
                             });
+                            if (response.data.video_url) {
+                                this.playUrl(response.data.video_url);
+                            }
                         })
                         .catch(error => {
                             this.messages.push({
                                 text: this.server_error_message,
                                 type: 'error'
                             });
-                            this.state = BOT_STATE.IDLE;
+                            this.is_busy = false;
                             console.log(error);
                         });
                 },
-                test() {
+                playUrl(url) {
                     player.src({
                         // src: 'temp/hls/12l5c_hls.m3u8',
                         // type: 'application/x-mpegURL'
-                        src: 'temp/output200_fps15.mp4',
+                        // src: 'temp/output200_fps15.mp4',
+                        src: url,
                         type: 'video/mp4'
                     });
                     // this.player.load();

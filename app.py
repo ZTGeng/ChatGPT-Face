@@ -1,16 +1,19 @@
-import os, subprocess
+import os
 from apscheduler.schedulers.background import BackgroundScheduler
 import time
 from datetime import datetime
-from flask import Flask, request, jsonify, Response, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory
 import openai
 from google.cloud import texttospeech
 import uuid
 from markupsafe import escape
+from wav2lip.wav2lip import FaceVideoMaker
 
-audio_dir = 'audio'
+work_dir = 'temp'
+files_to_delete = []
 
 app = Flask(__name__)
+faceVideoMaker = FaceVideoMaker(audio_dir=work_dir, video_dir=work_dir)
 start_time = time.time()
 
 # OPENAI 相关
@@ -47,7 +50,6 @@ counter = 0
 def reset_counter():
     global counter
     counter = 0
-    print_log()
 
 def add_counter():
     global counter
@@ -57,9 +59,22 @@ def is_limit_reached():
     global counter
     return counter >= API_LIMIT_PER_HOUR
 
+# 定时任务
+def hourly_maintain():
+    reset_counter()
+    print_log()
+
+    for file in files_to_delete:
+        os.remove(os.path.join(work_dir, file))
+    files_to_delete.clear()
+
+    for file in os.listdir(work_dir):
+        if file.endswith('.mp4'):
+            files_to_delete.append(file)
+
 scheduler = BackgroundScheduler()
 next_hour_time = datetime.fromtimestamp(time.time() + 3600 - time.time() % 3600)
-scheduler.add_job(reset_counter, 'interval', minutes=60, next_run_time=next_hour_time)
+scheduler.add_job(hourly_maintain, 'interval', minutes=60, next_run_time=next_hour_time)
 scheduler.start()
 
 # OPENAI API 调用
@@ -119,12 +134,12 @@ def text_to_speech(text, filename):
     synthesis_input = texttospeech.SynthesisInput(text=text)
     response = textToSpeechClient.synthesize_speech(
         input=synthesis_input, voice=voice, audio_config=audio_config)
-    with open("temp\\" + filename + ".wav", "wb") as out:
+    audio_path = os.path.join(work_dir, f'{filename}.wav')
+    with open(audio_path, "wb") as out:
         out.write(response.audio_content)
         # print('TTS 测试时间：' + str(time.time() - test_time))
 
 # Flask 路由
-
 @app.route('/')
 def index():
     return app.send_static_file('index.html')
@@ -167,58 +182,63 @@ def message():
     message = parse_chat_response(response, useSiteApiKey)
     message_no_code_block = remove_code_block(message)
     id = str(uuid.uuid4())[:8]
-    # text_to_speech(message_no_code_block, id)
+    text_to_speech(message_no_code_block, id)
+    faceVideoMaker.makeVideo(id)
 
-    return jsonify({'message': escape(message)}), 200
+    return jsonify({'message': escape(message), 'video_url': f'/{work_dir}/{id}.mp4'}), 200
 
-@app.route('/temp/<path:filename>')
-def get_temp_files(filename):
-    return send_from_directory(os.path.join(os.getcwd(), 'temp'), filename)
+@app.route(f'/{work_dir}/<path:filename>')
+def get_video_files(filename):
+    return send_from_directory(os.path.join(os.getcwd(), work_dir), filename)
 
-@app.route('/api/video')
-def video():
-    def generate():
-        # 打开MP4文件
-        with open('temp/output200_fps15.mp4', 'rb') as f:
-            # 调用FFmpeg命令行工具生成HLS流
-            # 这里的命令参数是示例，具体的参数需要根据实际情况调整
-            cmd = ['ffmpeg', '-i', '-', '-c:v', 'libx264', '-c:a', 'aac', '-hls_list_size', '10', '-hls_time', '10', '-f', 'hls', 'pipe:1']
-            process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            # 读取MP4文件并写入到FFmpeg进程的输入流
-            while True:
-                data = f.read(1024)
-                print("read")
-                if not data:
-                    break
-                process.stdin.write(data)
-            process.stdin.close()
-            # 从FFmpeg进程的输出流读取HLS流并传输到客户端
-            while True:
-                data = process.stdout.read(1024)
-                print("write")
-                if not data:
-                    break
-                yield data
+@app.route('/api/face_img')
+def face_img():
+    return send_from_directory(os.path.join(os.getcwd(), 'assets'), 'face_2.jpg')
 
-    # 设置HTTP响应头，指定MIME类型为application/vnd.apple.mpegurl
-    headers = {
-        'Content-Type': 'application/vnd.apple.mpegurl',
-        'Content-Disposition': 'attachment; filename="video.m3u8"'
-    }
-    # 返回一个生成器作为响应体
-    return Response(generate(), headers=headers)
+# @app.route('/api/video')
+# def video():
+#     def generate():
+#         # 打开MP4文件
+#         with open('temp/output200_fps15.mp4', 'rb') as f:
+#             # 调用FFmpeg命令行工具生成HLS流
+#             # 这里的命令参数是示例，具体的参数需要根据实际情况调整
+#             cmd = ['ffmpeg', '-i', '-', '-c:v', 'libx264', '-c:a', 'aac', '-hls_list_size', '10', '-hls_time', '10', '-f', 'hls', 'pipe:1']
+#             process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#             # 读取MP4文件并写入到FFmpeg进程的输入流
+#             while True:
+#                 data = f.read(1024)
+#                 print("read")
+#                 if not data:
+#                     break
+#                 process.stdin.write(data)
+#             process.stdin.close()
+#             # 从FFmpeg进程的输出流读取HLS流并传输到客户端
+#             while True:
+#                 data = process.stdout.read(1024)
+#                 print("write")
+#                 if not data:
+#                     break
+#                 yield data
 
-@app.route('/facetest')
-def test():
-    p1 = open('static/face_1.jpg', 'rb').read()
-    p2 = open('static/face_2.jpg', 'rb').read()
-    def generator():
+#     # 设置HTTP响应头，指定MIME类型为application/vnd.apple.mpegurl
+#     headers = {
+#         'Content-Type': 'application/vnd.apple.mpegurl',
+#         'Content-Disposition': 'attachment; filename="video.m3u8"'
+#     }
+#     # 返回一个生成器作为响应体
+#     return Response(generate(), headers=headers)
+
+# @app.route('/facetest')
+# def test():
+#     p1 = open('static/face_1.jpg', 'rb').read()
+#     p2 = open('static/face_2.jpg', 'rb').read()
+#     def generator():
         
-        for i in range(20):
-            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + (p1 if i % 2 == 0 else p2) + b'\r\n')
-            time.sleep(0.5)
-        yield b'--frame--\r\n'
-    return Response(generator(), mimetype='multipart/x-mixed-replace; boundary=frame')
+#         for i in range(20):
+#             yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + (p1 if i % 2 == 0 else p2) + b'\r\n')
+#             time.sleep(0.5)
+#         yield b'--frame--\r\n'
+#     return Response(generator(), mimetype='multipart/x-mixed-replace; boundary=frame')
         
 
 if __name__ == '__main__':
