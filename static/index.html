@@ -135,14 +135,7 @@ Click for more information.`,
                         poster: '/api/face_img',
                         autoplay: false,
                         controls: true,
-                        sources: [
-                            // {
-                            //     src: 'temp/hls/output_hls.m3u8',
-                            //     type: 'application/x-mpegURL'
-                                // src: 'static/output200.mp4',
-                                // type: 'video/mp4'
-                            // }
-                        ]
+                        sources: []
                     }
                 };
                 return { ...resources, ...props};
@@ -199,13 +192,9 @@ Click for more information.`,
                 },
                 playUrl(url) {
                     player.src({
-                        // src: 'temp/hls/12l5c_hls.m3u8',
-                        // type: 'application/x-mpegURL'
-                        // src: 'temp/output200_fps15.mp4',
                         src: url,
                         type: 'video/mp4'
                     });
-                    // this.player.load();
                     player.play();
                 },
                 decorateMessage(message) {
@@ -223,7 +212,6 @@ Click for more information.`,
             },
             mounted() {
                 player = videojs(document.getElementById('robot-video'), this.videoOptions, () => {
-                    // this.player.log('onPlayerReady', this);
                     console.log('onPlayerReady')
                 });
                 player.removeChild('BigPlayButton');
@@ -231,7 +219,6 @@ Click for more information.`,
                 player.on('ended', () => {
                     player.hasStarted(false);
                 });
-                // player.play();
             },
         });
         app.mount('#app');

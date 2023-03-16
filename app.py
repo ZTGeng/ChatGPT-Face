@@ -85,7 +85,7 @@ def fetch_chat_response(text, api_key):
         messages=[
             {"role": "user", "content": text},
         ],
-        max_tokens=2000
+        # max_tokens=2000
     )
 
 def parse_chat_response(response, useSiteApiKey):
@@ -195,51 +195,3 @@ def get_video_files(filename):
 def face_img():
     return send_from_directory(os.path.join(os.getcwd(), 'assets'), 'face_2.jpg')
 
-# @app.route('/api/video')
-# def video():
-#     def generate():
-#         # 打开MP4文件
-#         with open('temp/output200_fps15.mp4', 'rb') as f:
-#             # 调用FFmpeg命令行工具生成HLS流
-#             # 这里的命令参数是示例，具体的参数需要根据实际情况调整
-#             cmd = ['ffmpeg', '-i', '-', '-c:v', 'libx264', '-c:a', 'aac', '-hls_list_size', '10', '-hls_time', '10', '-f', 'hls', 'pipe:1']
-#             process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-#             # 读取MP4文件并写入到FFmpeg进程的输入流
-#             while True:
-#                 data = f.read(1024)
-#                 print("read")
-#                 if not data:
-#                     break
-#                 process.stdin.write(data)
-#             process.stdin.close()
-#             # 从FFmpeg进程的输出流读取HLS流并传输到客户端
-#             while True:
-#                 data = process.stdout.read(1024)
-#                 print("write")
-#                 if not data:
-#                     break
-#                 yield data
-
-#     # 设置HTTP响应头，指定MIME类型为application/vnd.apple.mpegurl
-#     headers = {
-#         'Content-Type': 'application/vnd.apple.mpegurl',
-#         'Content-Disposition': 'attachment; filename="video.m3u8"'
-#     }
-#     # 返回一个生成器作为响应体
-#     return Response(generate(), headers=headers)
-
-# @app.route('/facetest')
-# def test():
-#     p1 = open('static/face_1.jpg', 'rb').read()
-#     p2 = open('static/face_2.jpg', 'rb').read()
-#     def generator():
-        
-#         for i in range(20):
-#             yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + (p1 if i % 2 == 0 else p2) + b'\r\n')
-#             time.sleep(0.5)
-#         yield b'--frame--\r\n'
-#     return Response(generator(), mimetype='multipart/x-mixed-replace; boundary=frame')
-        
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80)
