@@ -4,5 +4,5 @@ venv/
 __pycache__/
 .env
 keys
-temp
 wav2lip/weights/
+temp/*

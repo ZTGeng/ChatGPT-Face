@@ -10,6 +10,8 @@ from markupsafe import escape
 from wav2lip.wav2lip import FaceVideoMaker
 
 work_dir = 'temp'
+if not os.path.exists(work_dir):
+    os.mkdir(work_dir)
 files_to_delete = []
 
 app = Flask(__name__)
