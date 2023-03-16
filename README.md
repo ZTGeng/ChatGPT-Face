@@ -5,7 +5,9 @@
 ## 安装依赖项
 
 Python3.9。(3.8以下版本未测试。3.10以上不支持。)
+
 使用virtualenv或者venv创建并激活虚拟环境。
+
 运行：
 
     pip install -r requirements.txt
@@ -15,7 +17,9 @@ Python3.9。(3.8以下版本未测试。3.10以上不支持。)
 复制项目根目录下的文件 '.envsample' 为 '.env'（注意文件名前面的 '.'）。
 将从 openai.com 获得的 API-KEY 复制粘贴给 OPENAI_API_KEY 变量。
 按照 [Google Cloud Text-to-Speech](https://cloud.google.com/text-to-speech/docs/before-you-begin?hl=zh-cn) 的指引，为你的谷歌开发者账号启用 Text-to-Speech API、创建服务账号，最后创建 JSON 密钥，并将密钥保存在 `keys/` 目录下（或本项目文件夹下任何安全的目录下，不要忘记将保存路径添加到 .gitignore 中）。然后将密钥路径和文件名复制粘贴给 '.env' 文件中 GOOGLE_APPLICATION_CREDENTIALS 变量。
+
 例如，你的密钥文件保存在：项目文件夹/keys/google-cloud-text-to-speech-key.json，那么应该设置`GOOGLE_APPLICATION_CREDENTIALS="keys/google-cloud-text-to-speech-key.json"`。
+
 注意！不要暴露你的 openai API-KEY 和 Google Cloud JSON 密钥。
 
 ## 下载 Wav2lip 预训练模型
