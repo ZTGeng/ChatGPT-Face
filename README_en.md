@@ -36,6 +36,10 @@ Go to [Wav2Lip Github Page](https://github.com/Rudrabha/Wav2Lip), find **Getting
 
 (Don't use `python app.py` or you will not load the .env file.)
 
+Open in your browser:
+
+    127.0.0.1:5000
+
 ## Acknowledgements
 
 ```
