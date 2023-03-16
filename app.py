@@ -8,6 +8,7 @@ from google.cloud import texttospeech
 import uuid
 from markupsafe import escape
 from wav2lip.wav2lip import FaceVideoMaker
+import pytz
 
 work_dir = 'temp'
 if not os.path.exists(work_dir):
@@ -71,10 +72,10 @@ def hourly_maintain():
     files_to_delete.clear()
 
     for file in os.listdir(work_dir):
-        if file.endswith('.mp4'):
+        if os.path.isfile(file):
             files_to_delete.append(file)
 
-scheduler = BackgroundScheduler()
+scheduler = BackgroundScheduler(timezone=pytz.utc)
 next_hour_time = datetime.fromtimestamp(time.time() + 3600 - time.time() % 3600)
 scheduler.add_job(hourly_maintain, 'interval', minutes=60, next_run_time=next_hour_time)
 scheduler.start()
@@ -182,6 +183,7 @@ def message():
         return jsonify({'error_code': 0, 'message': e}), 200
     
     message = parse_chat_response(response, useSiteApiKey)
+    
     message_no_code_block = remove_code_block(message)
     id = str(uuid.uuid4())[:8]
     text_to_speech(message_no_code_block, id)

@@ -52,7 +52,11 @@
                             <div class="card-body text-pre" v-html="message.text"></div>
                         </div>
                     </div>
-                    <div style="min-height: 200px"></div>
+                    <div class="text-center" style="min-height: 200px">
+                        <div class="spinner-border text-secondary" role="status" v-if="is_busy">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

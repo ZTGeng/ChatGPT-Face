@@ -8,11 +8,25 @@ Video chatting with GPT by Text-to-Speech transferring and video generating.
 
 Python3.9. (Pre 3.8: not tested. Post 3.10: not usable.)
 
-Use virtualenv or venv. Activate.
+Use virtualenv or venv. Activate
 
-Run:
+### Check if PyTorch needs to be installed separately
+
+Go to [PyTorch Get Started](https://pytorch.org/get-started/locally/), select your os and compute platform (CUDA vs CPU), check the command line below. If you see `pip3 install torch torchvision torchaudio`, you don't need to run it, because requirements.txt will take care. If you see a command line with arguments, you need to run it first (you can remove `torchvision torchaudio` from the command line).
+
+### Run:
 
     pip install -r requirements.txt
+
+### Install ffmpeg
+
+Linux:
+
+    sudo apt install ffmpeg
+
+Windows, Mac:
+
+Download and install, and add the path to the environment varibles PATH.
 
 ## Setup the .env file
 

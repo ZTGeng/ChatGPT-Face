@@ -10,9 +10,23 @@ Python3.9。(3.8以下版本未测试。3.10以上不支持。)
 
 使用virtualenv或者venv创建并激活虚拟环境。
 
-运行：
+### 检查是否需要单独安装 PyTorch
+
+前往 [PyTorch 安装页面](https://pytorch.org/get-started/locally/)，选择你的 os 和计算平台（显卡或 CPU），观察对应的安装命令。如果命令行为 `pip3 install torch torchvision torchaudio`，则无需单独运行，因为 requirements.txt 已包含。如果命令行带有参数，则需要运行此命令（但可以从命令行中去掉 `torchvision torchaudio` 这两个包名）。
+
+### 运行：
 
     pip install -r requirements.txt
+
+### 安装 ffmpeg
+
+Linux：
+
+    sudo apt install ffmpeg
+
+Windows，Mac：
+
+下载安装，并将安装路径添加到环境变量 PATH。
 
 ## 配置环境文件 .env
 
@@ -22,7 +36,7 @@ Python3.9。(3.8以下版本未测试。3.10以上不支持。)
 
 按照 [Google Cloud Text-to-Speech](https://cloud.google.com/text-to-speech/docs/before-you-begin?hl=zh-cn) 的指引，为你的谷歌开发者账号启用 Text-to-Speech API、创建服务账号，最后创建 JSON 密钥，并将密钥保存在 `keys/` 目录下（或本项目文件夹下任何安全的目录下，不要忘记将保存路径添加到 .gitignore 中）。然后将密钥路径和文件名复制粘贴给 '.env' 文件中 GOOGLE_APPLICATION_CREDENTIALS 变量。
 
-例如，你的密钥文件保存在：项目文件夹/keys/google-cloud-text-to-speech-key.json，那么应该设置`GOOGLE_APPLICATION_CREDENTIALS="keys/google-cloud-text-to-speech-key.json"`。
+例如，你的密钥文件保存在：项目文件夹/keys/google-cloud-text-to-speech-key.json，那么应该设置 `GOOGLE_APPLICATION_CREDENTIALS="keys/google-cloud-text-to-speech-key.json"`。
 
 注意！不要暴露你的 openai API-KEY 和 Google Cloud JSON 密钥。
 
