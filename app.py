@@ -15,6 +15,7 @@ if not os.path.exists(work_dir):
     os.mkdir(work_dir)
 files_to_delete = []
 
+print('服务器初始化...')
 app = Flask(__name__)
 faceVideoMaker = FaceVideoMaker(audio_dir=work_dir, video_dir=work_dir)
 start_time = time.time()
@@ -68,10 +69,10 @@ def hourly_maintain():
     print_log()
 
     for file in files_to_delete:
-        os.remove(os.path.join(work_dir, file))
+        os.remove(file)
     files_to_delete.clear()
-
-    for file in os.listdir(work_dir):
+    for filename in os.listdir(work_dir):
+        file = os.path.join(work_dir, filename)
         if os.path.isfile(file):
             files_to_delete.append(file)
 
@@ -150,7 +151,7 @@ def index():
 @app.route('/api/message', methods=['POST'])
 def message():
     data = request.json
-    print(data)
+    # print(data)
     useSiteApiKey = data.get('key_type') == 'default'
     if useSiteApiKey:
         if is_limit_reached():
@@ -183,7 +184,7 @@ def message():
         return jsonify({'error_code': 0, 'message': e}), 200
     
     message = parse_chat_response(response, useSiteApiKey)
-    
+
     message_no_code_block = remove_code_block(message)
     id = str(uuid.uuid4())[:8]
     text_to_speech(message_no_code_block, id)
