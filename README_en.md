@@ -6,7 +6,7 @@ Video chatting with GPT by Text-to-Speech transferring and video generating.
 
 ## Requirements
 
-Python3.9. (Pre 3.8: not tested. Post 3.10: not usable.)
+Python3.9. (3.7 & 3.8: not tested. 3.6: opencv not suppoerted. 3.10+: Pytorch not supported.)
 
 Use virtualenv or venv. Activate
 
