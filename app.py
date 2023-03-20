@@ -93,7 +93,7 @@ def fetch_chat_response(text, api_key):
     )
 
 def parse_chat_response(response, useSiteApiKey):
-    # print(response)
+    print('parse_chat_response')
     message = response['choices'][0]['message']['content']
     # print(message)
     if useSiteApiKey:
@@ -157,7 +157,7 @@ def message():
         if is_limit_reached():
             # Error code 1: 本站 api-key 超过使用限制
             return jsonify({'error_code': 1}), 200
-        
+    print("before fetch_chat_response")
     try:
         if useSiteApiKey:
             response = fetch_chat_response(data.get('message'), openai.api_key)
@@ -176,14 +176,19 @@ def message():
     except openai.error.RateLimitError as e:
         # Error code 3: api-key 一定时间内使用太过频繁
         return jsonify({'error_code': 3}), 200
-    except (openai.error.APIError, openai.error.Timeout) as e:
+    except (openai.error.APIError, openai.error.Timeout, openai.error.APIConnectionError) as e:
         # Error code 4: OPENAI API 服务异常
-        return jsonify({'error_code': 4}), 200
+        return jsonify({'error_code': 4, 'message': e}), 200
     except Exception as e:
         # Error code 0: 未知错误
         return jsonify({'error_code': 0, 'message': e}), 200
     
     message = parse_chat_response(response, useSiteApiKey)
+
+    is_video_mode = data.get('video')
+    print(f'is_video_mode: {is_video_mode}')
+    if not is_video_mode:
+        return jsonify({'message': escape(message)}), 200
 
     message_no_code_block = remove_code_block(message)
     id = str(uuid.uuid4())[:8]

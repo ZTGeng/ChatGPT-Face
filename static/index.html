@@ -36,17 +36,27 @@
                 </form>
             </div>
         </nav>
+        <div>
+            <div style="height: 100px"></div>
+            <div class="position-fixed d-inline-flex flex-column">
+                <input type="checkbox" class="btn-check" id="video-visibility-btn" v-model="is_video_mode" checked autocomplete="off">
+                <label class="btn btn-outline-secondary align-self-start mb-1" for="video-visibility-btn">{{ video_mode_button_text }}</label>
+                <div v-show="is_video_mode">
+                    <video id="robot-video" class="video-js"></video>
+                </div>
+            </div>
+        </div>
+        
         
         <div class="row" style="min-height: 100%">
             <div class="col col-4" style="min-height: 100%">
                 <div class="d-inline-flex flex-column justify-content-end" style="width: 100%; min-height: 100%;">
-                    <video id="robot-video" class="video-js mb-3"></video>
+                    
                     <div style="height: 200px"></div>
                 </div>
             </div>
             <div class="col" style="min-height: 100%">
                 <div class="d-inline-flex flex-column justify-content-end" style="width: 100%; min-height: 100%;">
-                    <div style="height: 200px"></div>
                     <div v-for="message in messages" class="mb-3" :class="message.type === 'bot' ? 'me-auto' : message.type === 'human' ? 'ms-auto' : 'mx-auto'">
                         <div class="card" :class="message.type === 'bot' ? 'bg-light text-dark me-3' : message.type === 'human' ? 'bg-primary text-white ms-3' : 'bg-danger text-white'">
                             <div class="card-body text-pre" v-html="message.text"></div>
@@ -83,7 +93,7 @@
         const { createApp } = Vue;
         const app = createApp({
             data() {
-                const resources = navigator.language.slice(0, 2) === "zh" ?
+                const localized = navigator.language.slice(0, 2) === "zh" ?
                 {
                     page_title: 'Open AI 聊天',
                     api_key_choice_default: '使用本站 OPENAI API-KEY（有流量限制）',
@@ -104,6 +114,8 @@
                         3: 'API 因访问太过频繁而被暂时限制使用，请稍后再试。',
                         4: 'OPENAI 服务器响应超时，请稍后再试。',
                     },
+                    video_mode_button_on: '视频模式已开启',  
+                    video_mode_button_off: '视频模式已关闭',
                 } :
                 {
                     page_title: 'Open AI Chatting',
@@ -125,14 +137,86 @@ Click for more information.`,
                         3: 'The API usage is temporarily restricted due to excessive access, please try again later.',
                         4: 'OPENAI server response timed out, please try again later.',
                     },
+                    video_mode_button_on: 'Video Mode On',
+                    video_mode_button_off: 'Video Mode Off',
                 };
-                const props = {
+                const unlocalized = {
                     api_key_choice: 'default',
                     api_key_custom: '',
                     message: '',
                     socket: null,
                     is_busy: false,
-                    messages: [],
+                    is_video_mode: true,
+                    messages: [
+                        {
+                            text: 'Hi, I\'m Open AI Chatting Bot. I can chat with you. You can try to ask me something.',
+                            type: 'bot'
+                        },
+                        {
+                            text: 'Hi! Nice to meet you!',
+                            type: 'human'
+                        },
+                        {
+                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
+                            type: 'bot'
+                        },
+                        {
+                            text: 'Hi! Nice to meet you!',
+                            type: 'human'
+                        },
+                        {
+                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
+                            type: 'bot'
+                        },
+                        {
+                            text: 'Hi! Nice to meet you!',
+                            type: 'human'
+                        },
+                        {
+                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
+                            type: 'bot'
+                        },
+                        {
+                            text: 'Hi! Nice to meet you!',
+                            type: 'human'
+                        },
+                        {
+                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
+                            type: 'bot'
+                        },
+                        {
+                            text: 'Hi! Nice to meet you!',
+                            type: 'human'
+                        },
+                        {
+                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
+                            type: 'bot'
+                        },
+                        {
+                            text: 'Hi! Nice to meet you!',
+                            type: 'human'
+                        },
+                        {
+                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
+                            type: 'bot'
+                        },
+                        {
+                            text: 'Hi! Nice to meet you!',
+                            type: 'human'
+                        },
+                        {
+                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
+                            type: 'bot'
+                        },
+                        {
+                            text: 'Hi! Nice to meet you!',
+                            type: 'human'
+                        },
+                        {
+                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
+                            type: 'bot'
+                        },
+                    ],
                     videoOptions: {
                         width: 256,
                         height: 256,
@@ -142,7 +226,12 @@ Click for more information.`,
                         sources: []
                     }
                 };
-                return { ...resources, ...props};
+                return { ...localized, ...unlocalized};
+            },
+            computed: {
+                video_mode_button_text() {
+                    return this.is_video_mode ? this.video_mode_button_on : this.video_mode_button_off;
+                },
             },
             methods: {
                 sendMessages() {
@@ -156,6 +245,7 @@ Click for more information.`,
                     const data = {
                         key_type: this.api_key_choice,
                         message: this.message,
+                        video: this.is_video_mode,
                     }
                     if (this.api_key_choice === 'custom') {
                         data.api_key = this.api_key_custom;
@@ -216,7 +306,7 @@ Click for more information.`,
             },
             mounted() {
                 player = videojs(document.getElementById('robot-video'), this.videoOptions, () => {
-                    console.log('onPlayerReady')
+                    // console.log('onPlayerReady')
                 });
                 player.removeChild('BigPlayButton');
                 player.getChild('ControlBar').removeChild('fullscreenToggle');
