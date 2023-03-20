@@ -20,7 +20,7 @@
                 
                 <form class="">
                     <div class="form-check">
-                        <input class="form-check-input" type="radio" v-model="api_key_choice"name="apiKeyChoice" value="default" id="apiKeyChoiceDefault" checked>
+                        <input class="form-check-input" type="radio" v-model="api_key_choice" name="apiKeyChoice" value="default" id="apiKeyChoiceDefault" checked>
                         <label class="form-check-label" for="apiKeyChoiceDefault">
                             {{ api_key_choice_default }}
                         </label>
@@ -39,10 +39,10 @@
         <div>
             <div style="height: 100px"></div>
             <div class="position-fixed d-inline-flex flex-column">
-                <input type="checkbox" class="btn-check" id="video-visibility-btn" v-model="is_video_mode" checked autocomplete="off">
-                <label class="btn btn-outline-secondary align-self-start mb-1" for="video-visibility-btn">{{ video_mode_button_text }}</label>
+                <input type="checkbox" class="btn-check" id="videoVisibilityBtn" v-model="is_video_mode" checked autocomplete="off">
+                <label class="btn btn-outline-secondary align-self-start mb-1" for="videoVisibilityBtn">{{ video_mode_button_text }}</label>
                 <div v-show="is_video_mode">
-                    <video id="robot-video" class="video-js"></video>
+                    <video id="robotVideo" class="video-js"></video>
                 </div>
             </div>
         </div>
@@ -51,19 +51,28 @@
         <div class="row" style="min-height: 100%">
             <div class="col col-4" style="min-height: 100%">
                 <div class="d-inline-flex flex-column justify-content-end" style="width: 100%; min-height: 100%;">
-                    
                     <div style="height: 200px"></div>
                 </div>
             </div>
             <div class="col" style="min-height: 100%">
-                <div class="d-inline-flex flex-column justify-content-end" style="width: 100%; min-height: 100%;">
-                    <div v-for="message in messages" class="mb-3" :class="message.type === 'bot' ? 'me-auto' : message.type === 'human' ? 'ms-auto' : 'mx-auto'">
-                        <div class="card" :class="message.type === 'bot' ? 'bg-light text-dark me-3' : message.type === 'human' ? 'bg-primary text-white ms-3' : 'bg-danger text-white'">
-                            <div class="card-body text-pre" v-html="message.text"></div>
+                <div class="d-flex flex-column justify-content-end" style="width: 100%; min-height: 100%;">
+                    <div v-for="message in messages" class="d-flex mb-3">
+                        <div class="form-check me-3 my-auto">
+                            <input class="form-check-input" type="checkbox" value="" v-if="message.role === 'assistant' || message.role === 'user'" v-model="message.is_checked">
+                        </div>
+                        <div :class="message.role === 'assistant' ? 'me-auto' : message.role === 'user' ? 'ms-auto' : 'mx-auto'">
+                            <div class="card" :class="message.role === 'assistant' ? 'bg-light text-dark me-3' : message.role === 'user' ? 'bg-primary text-white ms-3' : 'bg-danger text-white'">
+                                <div class="card-body text-pre" v-html="decorateMessage(message.content)"></div>
+                            </div>
                         </div>
                     </div>
-                    <div class="text-center" style="min-height: 200px">
-                        <div class="spinner-border text-secondary" role="status" v-if="is_busy">
+                    <div class="d-flex" style="min-height: 200px">
+                        <div class="form-check" v-if="content_messages.length > 0">
+                            <input class="form-check-input" type="checkbox" value="" id="selectAllCheck" @click="selectAll" checked>
+                            <label class="form-check-label" for="selectAllCheck">{{ select_all_check_label }}</label>
+                            <label class="form-check-label fw-bold ms-2" data-bs-toggle="tooltip" data-bs-placement="right" :title="select_content_explanation">&#9432;</label>
+                        </div>
+                        <div class="spinner-border text-secondary mx-auto" role="status" v-if="is_busy">
                             <span class="visually-hidden">Loading...</span>
                         </div>
                     </div>
@@ -76,9 +85,9 @@
                 <div class="input-group mb-3 px-3">
                     <textarea type="text" class="form-control me-2" aria-label="Message" aria-describedby="send-button" style="max-height: 150px;"
                         :placeholder="message_input_placeholder" 
-                        v-model="message"
+                        v-model="message_input"
                         @keydown.enter.shift.prevent="sendMessages "></textarea>
-                    <button class="btn btn-outline-secondary" type="button" id="send-button" @click="sendMessages" :disabled="is_busy">{{ message_button_send }}</button>
+                    <button class="btn btn-outline-secondary" type="button" id="sendButton" @click="sendMessages" :disabled="is_busy">{{ send_message_button_text }}</button>
                 </div>
             </div>
         </nav>
@@ -105,7 +114,7 @@
 并不推荐在不受信任的站点使用自己的 API-KEY。
 了解详细信息请点击。`,
                     message_input_placeholder: 'Shift + Enter 发送',
-                    message_button_send: '发送',
+                    send_message_button_text: '发送',
                     server_error_message: '服务器发生错误，请稍后再试。',
                     error_codes: {
                         0: '发生了未知错误，请稍后再试。',
@@ -116,6 +125,12 @@
                     },
                     video_mode_button_on: '视频模式已开启',  
                     video_mode_button_off: '视频模式已关闭',
+                    select_all_check_label: '全选',
+                    select_content_explanation: `每次发送时，所有选中的历史消息会一起发送给 ChatGPT。
+ChatGPT 会根据对话历史生成回复。实现连续对话。
+发送的内容量会折算为 API-KEY 使用额度。发送越多，消费额度越多。
+同时，ChatGPT 模型对于每次发送字数上限也有限制。
+建议只发送关键的历史消息。每次不超过 20 条为宜。`,
                 } :
                 {
                     page_title: 'Open AI Chatting',
@@ -128,7 +143,7 @@ After the free credits are used up, you need to provide a valid payment method t
 It is not recommended to use your own API-KEY on untrusted sites.
 Click for more information.`,
                     message_input_placeholder: 'Shift + Enter to send',
-                    message_button_send: 'Send',
+                    send_message_button_text: 'Send',
                     server_error_message: 'Server error, please try again later.',
                     error_codes: {
                         0: 'An unknown error occurred, please try again later.',
@@ -139,84 +154,21 @@ Click for more information.`,
                     },
                     video_mode_button_on: 'Video Mode On',
                     video_mode_button_off: 'Video Mode Off',
+                    select_all_check_label: 'Select All',
+                    select_content_explanation: `All selected historical messages will be sent to ChatGPT on each send.
+ChatGPT replies based on the dialogue history. That's how continuous conversations works.
+The amount of words sent will be converted into API-KEY usage. The more you send, the more you consume.
+Meanwhile, the ChatGPT model also has a limit on the words of each message sent.
+It is recommended to only send the key historical messages. No more than 20 at each time.`,
                 };
                 const unlocalized = {
                     api_key_choice: 'default',
                     api_key_custom: '',
-                    message: '',
+                    message_input: '',
                     socket: null,
                     is_busy: false,
                     is_video_mode: true,
-                    messages: [
-                        {
-                            text: 'Hi, I\'m Open AI Chatting Bot. I can chat with you. You can try to ask me something.',
-                            type: 'bot'
-                        },
-                        {
-                            text: 'Hi! Nice to meet you!',
-                            type: 'human'
-                        },
-                        {
-                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
-                            type: 'bot'
-                        },
-                        {
-                            text: 'Hi! Nice to meet you!',
-                            type: 'human'
-                        },
-                        {
-                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
-                            type: 'bot'
-                        },
-                        {
-                            text: 'Hi! Nice to meet you!',
-                            type: 'human'
-                        },
-                        {
-                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
-                            type: 'bot'
-                        },
-                        {
-                            text: 'Hi! Nice to meet you!',
-                            type: 'human'
-                        },
-                        {
-                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
-                            type: 'bot'
-                        },
-                        {
-                            text: 'Hi! Nice to meet you!',
-                            type: 'human'
-                        },
-                        {
-                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
-                            type: 'bot'
-                        },
-                        {
-                            text: 'Hi! Nice to meet you!',
-                            type: 'human'
-                        },
-                        {
-                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
-                            type: 'bot'
-                        },
-                        {
-                            text: 'Hi! Nice to meet you!',
-                            type: 'human'
-                        },
-                        {
-                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
-                            type: 'bot'
-                        },
-                        {
-                            text: 'Hi! Nice to meet you!',
-                            type: 'human'
-                        },
-                        {
-                            text: 'You can also try to ask me to draw something. For example, you can ask me to draw a cat.',
-                            type: 'bot'
-                        },
-                    ],
+                    messages: [],
                     videoOptions: {
                         width: 256,
                         height: 256,
@@ -232,44 +184,57 @@ Click for more information.`,
                 video_mode_button_text() {
                     return this.is_video_mode ? this.video_mode_button_on : this.video_mode_button_off;
                 },
+                content_messages() {
+                    return this.messages.filter(message => message.role === 'assistant' || message.role === 'user');
+                },
             },
             methods: {
                 sendMessages() {
-                    if (this.message === '') {
+                    if (this.message_input === '') {
                         return
                     }
                     if (this.is_busy) {
                         return
                     }
 
+                    const messages = this.content_messages
+                        .filter(message => message.is_checked)
+                        .map(message => { return { content: message.content, role: message.role } });
+                    messages.push({
+                        content: this.message_input,
+                        role: 'user',
+                    });
                     const data = {
                         key_type: this.api_key_choice,
-                        message: this.message,
+                        messages: messages,
                         video: this.is_video_mode,
                     }
                     if (this.api_key_choice === 'custom') {
                         data.api_key = this.api_key_custom;
                     }
+
                     this.messages.push({
-                        text: this.decorateMessage(this.message),
-                        type: 'human'
+                        content: this.message_input,
+                        role: 'user',
+                        is_checked: true,
                     });
-                    this.message = '';
+                    this.message_input = '';
                     this.is_busy = true;
                     
-                    axios.post('/api/message', data)
+                    axios.post('/api/messagev2', data)
                         .then(response => {
                             this.is_busy = false;
                             if (response.data.error_code) {
                                 this.messages.push({
-                                    text: this.error_codes[response.data.error_code],
-                                    type: 'error'
+                                    content: this.error_codes[response.data.error_code],
+                                    role: 'error'
                                 });
                                 return
                             }
                             this.messages.push({
-                                text: this.decorateMessage(response.data.message),
-                                type: 'bot'
+                                content: response.data.message,
+                                role: 'assistant',
+                                is_checked: true,
                             });
                             if (response.data.video_url) {
                                 this.playUrl(response.data.video_url);
@@ -277,8 +242,8 @@ Click for more information.`,
                         })
                         .catch(error => {
                             this.messages.push({
-                                text: this.server_error_message,
-                                type: 'error'
+                                content: this.server_error_message,
+                                role: 'error'
                             });
                             this.is_busy = false;
                             console.log(error);
@@ -303,9 +268,20 @@ Click for more information.`,
                     });
                     return newMessage;
                 },
+                selectAll(event) {
+                    if (event.target.checked) {
+                        this.content_messages.forEach(message => {
+                            message.is_checked = true;
+                        });
+                    } else {
+                        this.content_messages.forEach(message => {
+                            message.is_checked = false;
+                        });
+                    }
+                }
             },
             mounted() {
-                player = videojs(document.getElementById('robot-video'), this.videoOptions, () => {
+                player = videojs(document.getElementById('robotVideo'), this.videoOptions, () => {
                     // console.log('onPlayerReady')
                 });
                 player.removeChild('BigPlayButton');

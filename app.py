@@ -82,20 +82,21 @@ scheduler.add_job(hourly_maintain, 'interval', minutes=60, next_run_time=next_ho
 scheduler.start()
 
 # OPENAI API 调用
-def fetch_chat_response(text, api_key):
+def fetch_chat_response_v1(text, api_key):
+    return fetch_chat_response([{"role": "user", "content": text}], api_key)
+
+def fetch_chat_response(messages, api_key):
     return openai.ChatCompletion.create(
         api_key=api_key,
         model="gpt-3.5-turbo",
-        messages=[
-            {"role": "user", "content": text},
-        ],
+        messages=messages,
         # max_tokens=2000
     )
 
 def parse_chat_response(response, useSiteApiKey):
-    print('parse_chat_response')
+    # print('parse_chat_response')
     message = response['choices'][0]['message']['content']
-    # print(message)
+    # print(response['usage'])
     if useSiteApiKey:
         global site_api_key_completion_tokens
         global site_api_key_prompt_tokens
@@ -149,7 +150,7 @@ def index():
     return app.send_static_file('index.html')
 
 @app.route('/api/message', methods=['POST'])
-def message():
+def message_deprecate():
     data = request.json
     # print(data)
     useSiteApiKey = data.get('key_type') == 'default'
@@ -157,17 +158,17 @@ def message():
         if is_limit_reached():
             # Error code 1: 本站 api-key 超过使用限制
             return jsonify({'error_code': 1}), 200
-    print("before fetch_chat_response")
+    # print("before fetch_chat_response")
     try:
         if useSiteApiKey:
-            response = fetch_chat_response(data.get('message'), openai.api_key)
+            response = fetch_chat_response_v1(data.get('message'), openai.api_key)
             add_counter()
         else:
             api_key = data.get('api_key')
             if not api_key:
                 # Error code 2: 外部 api-key 为空或无效
                 return jsonify({'error_code': 2}), 200
-            response = fetch_chat_response(data.get('message'), api_key)
+            response = fetch_chat_response_v1(data.get('message'), api_key)
     except openai.error.AuthenticationError as e:
         # Error code 1: 本站 api-key 欠费或无效，按照超过使用限制处理
         # （因为本站 api-key 的任何信息都应避免暴露，所以相关错误统一返回超过使用限制）
@@ -178,15 +179,64 @@ def message():
         return jsonify({'error_code': 3}), 200
     except (openai.error.APIError, openai.error.Timeout, openai.error.APIConnectionError) as e:
         # Error code 4: OPENAI API 服务异常
-        return jsonify({'error_code': 4, 'message': e}), 200
+        return jsonify({'error_code': 4}), 200
     except Exception as e:
         # Error code 0: 未知错误
-        return jsonify({'error_code': 0, 'message': e}), 200
+        return jsonify({'error_code': 0}), 200
     
     message = parse_chat_response(response, useSiteApiKey)
 
     is_video_mode = data.get('video')
-    print(f'is_video_mode: {is_video_mode}')
+    # print(f'is_video_mode: {is_video_mode}')
+    if not is_video_mode:
+        return jsonify({'message': escape(message)}), 200
+
+    message_no_code_block = remove_code_block(message)
+    id = str(uuid.uuid4())[:8]
+    text_to_speech(message_no_code_block, id)
+    faceVideoMaker.makeVideo(id)
+
+    return jsonify({'message': escape(message), 'video_url': f'/{work_dir}/{id}.mp4'}), 200
+
+@app.route('/api/messagev2', methods=['POST'])
+def message_v2():
+    data = request.json
+    # print(data)
+    useSiteApiKey = data.get('key_type') == 'default'
+    if useSiteApiKey:
+        if is_limit_reached():
+            # Error code 1: 本站 api-key 超过使用限制
+            return jsonify({'error_code': 1}), 200
+    # print("before fetch_chat_response")
+    try:
+        if useSiteApiKey:
+            response = fetch_chat_response(data.get('messages'), openai.api_key)
+            add_counter()
+        else:
+            api_key = data.get('api_key')
+            if not api_key:
+                # Error code 2: 外部 api-key 为空或无效
+                return jsonify({'error_code': 2}), 200
+            response = fetch_chat_response(data.get('messages'), api_key)
+    except openai.error.AuthenticationError as e:
+        # Error code 1: 本站 api-key 欠费或无效，按照超过使用限制处理
+        # （因为本站 api-key 的任何信息都应避免暴露，所以相关错误统一返回超过使用限制）
+        # Error code 2: 外部 api-key 为空或无效
+        return jsonify({'error_code': 1 if useSiteApiKey else 2}), 200
+    except openai.error.RateLimitError as e:
+        # Error code 3: api-key 一定时间内使用太过频繁
+        return jsonify({'error_code': 3}), 200
+    except (openai.error.APIError, openai.error.Timeout, openai.error.APIConnectionError) as e:
+        # Error code 4: OPENAI API 服务异常
+        return jsonify({'error_code': 4}), 200
+    except Exception as e:
+        # Error code 0: 未知错误
+        return jsonify({'error_code': 0}), 200
+    
+    message = parse_chat_response(response, useSiteApiKey)
+
+    is_video_mode = data.get('video')
+    # print(f'is_video_mode: {is_video_mode}')
     if not is_video_mode:
         return jsonify({'message': escape(message)}), 200
 
