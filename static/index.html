@@ -11,14 +11,33 @@
     <link href="https://vjs.zencdn.net/8.0.4/video-js.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .offcanvas-start {
+            width: 450px;
+        }
+        .tooltip-inner {
+            max-width: 500px;
+        }
+    </style>
 </head>
 <body>
     <div id="app" class="container" style="height: 100vh">
         <nav class="navbar fixed-top navbar-light bg-light">
             <div class="container-fluid">
                 <h1 class="navbar-brand">{{ page_title }}</h1>
-                
-                <form class="">
+                <span class="me-2" data-bs-toggle="offcanvas" data-bs-target="#settingsMenu" aria-controls="settingsMenu" style="cursor: pointer;">
+                    <svg v-html="gear_svg_html" width="16" height="16"></svg>
+                </span>
+            </div>
+        </nav>
+        
+        <div class="offcanvas offcanvas-start" tabindex="-1" id="settingsMenu" aria-labelledby="settingsMenuLabel">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title" id="settingsMenuLabel">{{ setting_title }}</h5>
+                <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body">
+                <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="radio" v-model="api_key_choice" name="apiKeyChoice" value="default" id="apiKeyChoiceDefault" checked>
                         <label class="form-check-label" for="apiKeyChoiceDefault">
@@ -31,16 +50,178 @@
                             {{ api_key_choice_custom }}
                         </label>
                         <input class="me-2" type="text" placeholder="API-KEY" v-model="api_key_custom" aria-label="API-KEY">
-                        <a class="form-check-label fw-bold me-2 alert-link" href="https://openai.com/pricing" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom" :title="api_key_explanation">&#9432;</a>
+                        <a class="text-primary" href="https://openai.com/pricing" target="_blank">
+                            <span data-bs-toggle="tooltip" data-bs-trigger="hover focus" :title="api_key_explanation">
+                                <svg v-html="info_svg_html" width="16" height="16"></svg>
+                            </span>
+                        </a>
                     </div>
-                </form>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="systemContent">
+                        {{ system_role_content_label }}
+                        <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="system_role_content_explanation">
+                            <svg v-html="info_svg_html" width="16" height="16"></svg>
+                        </span>
+                    </label>
+                    <textarea class="form-control" id="systemContent" rows="2" v-model="system_role_content" :placeholder="system_role_content_placeholder"></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <div class="row">
+                        <div class="col-auto">
+                            <label class="form-label" for="temperatureBar">
+                                {{ temperature_label }}
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="temperature_explanation">
+                                    <svg v-html="info_svg_html" width="16" height="16"></svg>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="col-auto ms-auto me-2">
+                            <label>{{ temperature }}</label>
+                        </div>
+                    </div>
+                    <input type="range" class="form-range" v-model="temperature" min="0" max="2" step="0.1" id="temperatureBar">
+                </div>
+
+                <div class="mb-3">
+                    <div class="row">
+                        <div class="col-auto">
+                            <label class="form-label" for="maxTokensBar">
+                                {{ max_tokens_label }}
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="max_tokens_explanation">
+                                    <svg v-html="info_svg_html" width="16" height="16"></svg>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="col-auto ms-auto me-2" :class="max_tokens_inf ? 'text-secondary' : 'text-dark'">
+                            <label>{{ max_tokens }}</label>
+                        </div>
+                    </div>
+                    <input type="range" class="form-range" v-model="max_tokens" :disabled="max_tokens_inf" min="1" max="2048" step="1" id="maxTokensBar">
+                    <div class="row">
+                        <div class="col-auto ms-auto">
+                            <label class="me-2" for="maxTokensInfCheck">{{ max_token_inf_check_label }}</label>
+                            <input class="form-check-input" v-model="max_tokens_inf" type="checkbox" id="maxTokensInfCheck" checked>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="row">
+                        <div class="col-auto">
+                            <label class="form-label" for="presencepenaltyBar">
+                                {{ presence_penalty_label }}
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="presence_penalty_explanation">
+                                    <svg v-html="info_svg_html" width="16" height="16"></svg>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="col-auto ms-auto me-2">
+                            <label>{{ presence_penalty }}</label>
+                        </div>
+                    </div>
+                    <input type="range" class="form-range" v-model="presence_penalty" min="-2" max="2" step="0.1" id="presencepenaltyBar">
+                </div>
+
+                <div class="mb-3">
+                    <div class="row">
+                        <div class="col-auto">
+                            <label class="form-label" for="frequencypenaltyBar">
+                                {{ frequency_penalty_label }}
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="frequency_penalty_explanation">
+                                    <svg v-html="info_svg_html" width="16" height="16"></svg>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="col-auto ms-auto me-2">
+                            <label>{{ frequency_penalty }}</label>
+                        </div>
+                    </div>
+                    <input type="range" class="form-range" v-model="frequency_penalty" min="-2" max="2" step="0.1" id="frequencypenaltyBar">
+                    <span class="text-warning me-2"><svg v-html="warning_svg_html" width="16" height="16"></svg></span>
+                    <small>{{ frequency_penalty_warning }}</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="stopSequencesButton">
+                        {{ stop_sequences_label }}
+                        <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="stop_sequences_explanation">
+                            <svg v-html="info_svg_html" width="16" height="16"></svg>
+                        </span>
+                    </label>
+                    <div class="input-group mb-1">
+                        <input type="text" class="form-control" :disabled="stop_sequences.length >= 4" v-model="stop_sequences_input" placeholder="" id="stopSequencesInput" aria-describedby="stopSequencesButton">
+                        <button class="btn btn-outline-secondary" :disabled="stop_sequences.length >= 4" @click="addStopSequence" type="button" id="stopSequencesButton">{{ stop_sequences_button_label }}</button>
+                    </div>
+                    <div class="row">
+                        <div class="col-auto mb-1" v-for="stop_sequence in stop_sequences" :key="stop_sequence">
+                            <div class="badge bg-secondary text-wrap">
+                                {{ stop_sequence }}
+                                <button type="button" class="btn-close btn-close-white" aria-label="Close" @click="removeStopSequence(stop_sequence)"></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" for="logitBiasButton">
+                        {{ logit_bias_label }}
+                        <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="logit_bias_explanation">
+                            <svg v-html="info_svg_html" width="16" height="16"></svg>
+                        </span>
+                    </label>
+                    <div class="input-group mb-1">
+                        <input type="text" class="form-control" style="flex: 2" v-model="logit_bias_key_input" placeholder="" id="logitBiasKeyInput">
+                        <input type="number" class="form-control" style="flex: 1" max="100" min="-100" step="0.1" v-model="logit_bias_value_input" :placeholder="logit_bias_value_placeholder" id="logitBiasValueInput">
+                        <button class="btn btn-outline-secondary" @click="addOrUpdateLogitBias()" type="button" id="logitBiasButton">{{ logit_bias_button_label }}</button>
+                    </div>
+                    <div class="row">
+                        <div class="col-auto mb-1" v-for="(logit_bias_value, logit_bias_key) in logit_bias" :key="logit_bias_key">
+                            <div class="badge text-wrap" :class="logit_bias_value < 0 ? 'bg-danger' : logit_bias_value > 0 ? 'bg-success' : 'bg-secondary'">
+                                {{ logit_bias_key }}: {{ logit_bias_value }}
+                                <button type="button" class="btn-close btn-close-white" aria-label="Close" @click="removeLogitBias(logit_bias_key)"></button>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="text-warning me-2"><svg v-html="warning_svg_html" width="16" height="16"></svg></span>
+                    <small>{{ logit_bias_warning }}</small>
+                </div>
+
+                <div class="mb-3">
+                    <div class="row">
+                        <div class="col-auto">
+                            <label class="form-label" for="calculateMessagesTokensButton">
+                                {{ current_messages_tokens_label }}
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="current_messages_tokens_explanation">
+                                    <svg v-html="info_svg_html" width="16" height="16"></svg>
+                                </span>
+                            </label>
+                        </div>
+                        <div class="col-auto ms-auto me-2">
+                            <input class="form-control-plaintext text-end" type="number" v-model="current_messages_tokens" id="currentMessagesTokensDisplay" placeholder="..." disabled readonly>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-auto ms-auto me-2">
+                            <button class="btn btn-outline-secondary" @click="calculateMessagesTokens" type="button" id="calculateMessagesTokensButton">
+                                <div class="spinner-border spinner-border-sm" role="status" v-if="current_messages_tokens_fetching">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                {{ current_messages_tokens_button_label }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </nav>
+        </div>
+
         <div>
             <div style="height: 100px"></div>
             <div class="position-fixed d-inline-flex flex-column">
                 <input type="checkbox" class="btn-check" id="videoVisibilityBtn" v-model="is_video_mode" checked autocomplete="off">
-                <label class="btn btn-outline-secondary align-self-start mb-1" for="videoVisibilityBtn">{{ video_mode_button_text }}</label>
+                <label class="btn btn-outline-secondary align-self-start mb-1" for="videoVisibilityBtn">{{ is_video_mode ? video_mode_button_on : video_mode_button_off }}</label>
                 <div v-show="is_video_mode">
                     <video id="robotVideo" class="video-js"></video>
                 </div>
@@ -58,7 +239,7 @@
                 <div class="d-flex flex-column justify-content-end" style="width: 100%; min-height: 100%;">
                     <div v-for="message in messages" class="d-flex mb-3">
                         <div class="form-check me-3 my-auto">
-                            <input class="form-check-input" type="checkbox" value="" v-if="message.role === 'assistant' || message.role === 'user'" v-model="message.is_checked">
+                            <input class="form-check-input" type="checkbox" value="" v-if="message.role === 'assistant' || message.role === 'user'" v-model="message.is_checked" @click="current_messages_tokens=null">
                         </div>
                         <div :class="message.role === 'assistant' ? 'me-auto' : message.role === 'user' ? 'ms-auto' : 'mx-auto'">
                             <div class="card" :class="message.role === 'assistant' ? 'bg-light text-dark me-3' : message.role === 'user' ? 'bg-primary text-white ms-3' : 'bg-danger text-white'">
@@ -69,8 +250,12 @@
                     <div class="d-flex" style="min-height: 200px">
                         <div class="form-check" v-if="content_messages.length > 0">
                             <input class="form-check-input" type="checkbox" value="" id="selectAllCheck" @click="selectAll" checked>
-                            <label class="form-check-label" for="selectAllCheck">{{ select_all_check_label }}</label>
-                            <label class="form-check-label fw-bold ms-2" data-bs-toggle="tooltip" data-bs-placement="right" :title="select_content_explanation">&#9432;</label>
+                            <label class="form-check-label" for="selectAllCheck">
+                                {{ select_all_check_label }}
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="select_content_explanation">
+                                    <svg v-html="info_svg_html" width="16" height="16"></svg>
+                                </span>
+                            </label>
                         </div>
                         <div class="spinner-border text-secondary mx-auto" role="status" v-if="is_busy">
                             <span class="visually-hidden">Loading...</span>
@@ -96,6 +281,7 @@
     </div>
 
     <script src="https://vjs.zencdn.net/8.0.4/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
     
     <script>
         let player = null; // 使用全局变量是因为 video.js 的一个 bug。详见 https://github.com/videojs/video.js/issues/7418
@@ -105,14 +291,14 @@
                 const localized = navigator.language.slice(0, 2) === "zh" ?
                 {
                     page_title: 'Open AI 聊天',
-                    api_key_choice_default: '使用本站 OPENAI API-KEY（有流量限制）',
-                    api_key_choice_custom: '使用我的 OPENAI API-KEY：',
-                    api_key_explanation: `关于 OPENAI API-KEY：
-目前注册 openai.com 开发者用户时，会获得 5 美元的免费额度。
-开发者用户可以免费创建 API-KEY，但是使用 API-KEY 时会消耗额度。
-在免费额度用完后，需要提供有效付款方式继续使用API-KEY。
-并不推荐在不受信任的站点使用自己的 API-KEY。
-了解详细信息请点击。`,
+                    api_key_choice_default: '使用本站 API-KEY（有流量限制）',
+                    api_key_choice_custom: '使用我的 API-KEY：',
+                    api_key_explanation: `关于 OPENAI API-KEY：<br>
+                                        目前注册 openai.com 开发者用户时，会获得 5 美元的免费额度。<br>
+                                        开发者用户可以免费创建 API-KEY，但是使用 API-KEY 时会消耗额度。<br>
+                                        在免费额度用完后，需要提供有效付款方式继续使用API-KEY。<br>
+                                        并不推荐在不受信任的站点使用自己的 API-KEY。<br>
+                                        了解详细信息请点击。`,
                     message_input_placeholder: 'Shift + Enter 发送',
                     send_message_button_text: '发送',
                     server_error_message: '服务器发生错误，请稍后再试。',
@@ -122,26 +308,70 @@
                         2: '您提供的 API-KEY 无效。',
                         3: 'API 因访问太过频繁而被暂时限制使用，请稍后再试。',
                         4: 'OPENAI 服务器响应超时，请稍后再试。',
+                        5: '消息过长。请减少您选择的历史消息。'
                     },
                     video_mode_button_on: '视频模式已开启',  
                     video_mode_button_off: '视频模式已关闭',
                     select_all_check_label: '全选',
-                    select_content_explanation: `每次发送时，所有选中的历史消息会一起发送给 ChatGPT。
-ChatGPT 会根据对话历史生成回复。实现连续对话。
-发送的内容量会折算为 API-KEY 使用额度。发送越多，消费额度越多。
-同时，ChatGPT 模型对于每次发送字数上限也有限制。
-建议只发送关键的历史消息。每次不超过 20 条为宜。`,
+                    select_content_explanation: `每次发送时，所有选中的历史消息会一起发送给 ChatGPT。<br>
+                                                ChatGPT 会根据对话历史生成回复。实现连续对话。<br>
+                                                发送的内容量会折算为 API-KEY 使用额度。发送越多，消费额度越多。<br>
+                                                同时，ChatGPT 模型对于每次发送字数上限也有限制。<br>
+                                                建议只发送关键的历史消息。每次不超过 20 条为宜。`,
+                    setting_title: '设置',
+                    system_role_content_label: '系统角色消息（非必需）',
+                    system_role_content_placeholder: '你是一个友好的助理机器人。',
+                    system_role_content_explanation: `系统角色消息会加在发送给 ChatGPT 的对话开始处，以设置其行为模式。<br>
+                                                    根据 OPENAI 文档，gpt-3.5-turbo-0301 模型对这一信息并不总是很敏感。`,
+                    temperature_label: '随机性',
+                    temperature_explanation: `数值越高，生成的回复越随机。<br>
+                                            数值越低，生成的回复越是集中和确定。`,
+                    max_tokens_label: '回复长度限制',
+                    max_tokens_explanation: `每次生成的回复最多包含的 token 数。<br>
+                                            注意：这个设置仅是对于回复的 token 数的限制。<br>
+                                            与此同时，每次发送的消息与生成的回复所包含的总 token 数也受到限制，<br>
+                                            具体限额依模型而不同。对 gpt-3.5-turbo 模型而言，限额为 4096。<br>
+                                            * Token 是语言模型的处理单位。中文字数无法直接换算 token 数。<br>
+                                            经验来说，100 中文字产生的 tokens 大约在 100 到 200 之间。`,
+                    max_token_inf_check_label: '不限',
+                    presence_penalty_label: '避免重复（按出现与否）',
+                    presence_penalty_explanation: `数值越高，同一条回复中后面的内容越不会重复前面的内容。<br>
+                                                这一调整只考虑某一 token 之前是否出现过，而不考虑其出现的次数。<br>
+                                                根据 OPENAI 文档，调高这一数值，模型会倾向于谈论新话题。`,
+                    frequency_penalty_label: '避免重复（按出现频率）',
+                    frequency_penalty_explanation: `数值越高，同一条回复中后面的内容越不会重复前面的内容。<br>
+                                                    这一调整会考虑 token 出现的频率。之前出现越多，后面越不容易出现。<br>
+                                                    根据 OPENAI 文档，调高这一数值，模型会避免使用相同的词句。`,
+                    frequency_penalty_warning: '尝试负值（强制重复）时最好限制回复长度以免发生重复词占满回复额度的情况。',
+                    stop_sequences_label: '停止词',
+                    stop_sequences_explanation: `当生成的回复中出现这些词语时，生成过程会提前结束。<br>
+                                                最多可以设置 4 组。`,
+                    stop_sequences_button_label: '输入',
+                    logit_bias_label: '偏好词',
+                    logit_bias_value_placeholder: '-100~100',
+                    logit_bias_explanation: `设置特定词语在生成内容中的偏好，即出现的概率。<br>
+                                            偏好值范围为 -100 到 100。偏好值越大越容易出现。<br>
+                                            较大的负值可以阻止特定词被使用，但是并不绝对。<br>
+                                            较大的正值可能会强制特定词出现。注意：出现次数无限制。<br>
+                                            建议从 -1 到 1 之间开始尝试，然后逐步调整。`,
+                    logit_bias_button_label: '输入',
+                    logit_bias_warning: '尝试大的正值（强制出现）时最好限制回复长度以免发生重复词占满回复额度的情况。',
+                    current_messages_tokens_label: '当前消息 token 数',
+                    current_messages_tokens_explanation: `在发送消息前，计算当前消息的 token 数。<br>
+                                                        包括被选择的历史消息和输入的新消息。`,
+                    current_messages_tokens_button_label: '计算',
                 } :
                 {
                     page_title: 'Open AI Chatting',
-                    api_key_choice_default: 'Use OPENAI API-KEY On This Site (Limited Traffic)',
-                    api_key_choice_custom: 'Use My OPENAI API-KEY:',
-                    api_key_explanation: `About OPENAI API-KEY:
-Currently, when registering as a developer user on openai.com, you will receive $5 in free credits.
-Developer users can create API-KEYs for free, but using API-KEYs will consume credits.
-After the free credits are used up, you need to provide a valid payment method to continue using API-KEYs.
-It is not recommended to use your own API-KEY on untrusted sites.
-Click for more information.`,
+                    logit_bias_button_label: 'Enter',
+                    api_key_choice_default: 'Use API-KEY On This Site (Limited Traffic)',
+                    api_key_choice_custom: 'Use My API-KEY:',
+                    api_key_explanation: `About OPENAI API-KEY:<br>
+                                        Currently, when registering as a developer user on openai.com, you will receive $5 in free credits.<br>
+                                        Developer users can create API-KEYs for free, but using API-KEYs will consume credits.<br>
+                                        After the free credits are used up, you need to provide a valid payment method to continue using API-KEYs.<br>
+                                        It is not recommended to use your own API-KEY on untrusted sites.<br>
+                                        Click for more information.`,
                     message_input_placeholder: 'Shift + Enter to send',
                     send_message_button_text: 'Send',
                     server_error_message: 'Server error, please try again later.',
@@ -151,19 +381,76 @@ Click for more information.`,
                         2: 'Your API-KEY is invalid.',
                         3: 'The API usage is temporarily restricted due to excessive access, please try again later.',
                         4: 'OPENAI server response timed out, please try again later.',
+                        5: 'Message too long. Please reduce the selected historical messages.'
+                        
                     },
                     video_mode_button_on: 'Video Mode On',
                     video_mode_button_off: 'Video Mode Off',
                     select_all_check_label: 'Select All',
-                    select_content_explanation: `All selected historical messages will be sent to ChatGPT on each send.
-ChatGPT replies based on the dialogue history. That's how continuous conversations works.
-The amount of words sent will be converted into API-KEY usage. The more you send, the more you consume.
-Meanwhile, the ChatGPT model also has a limit on the words of each message sent.
-It is recommended to only send the key historical messages. No more than 20 at each time.`,
+                    select_content_explanation: `All selected historical messages will be sent to ChatGPT on each send.<br>
+                                                ChatGPT replies based on the dialogue history. That's how continuous conversations works.<br>
+                                                The amount of words sent will be converted into API-KEY usage. The more you send, the more you consume.<br>
+                                                Meanwhile, the ChatGPT model also has a limit on the words of each message sent.<br>
+                                                It is recommended to only send the key historical messages. No more than 20 at each time.`,
+                    setting_title: 'Settings',
+                    system_role_content_label: 'System Role Message (Optional)',
+                    system_role_content_placeholder: 'You are a helpful assistant.',
+                    system_role_content_explanation: `System role message will be added to the beginning of the conversation sent to ChatGPT,<br>
+                                                    to help setting the behavior of the assistant.<br>
+                                                    According to OPENAI, the gpt-3.5-turbo-0301 model does not always pay strong attention to this.`,
+                    temperature_label: 'Randomness',
+                    temperature_explanation: `Higher values will make the output more random.<br>
+                                            Lower values will make it more focused and deterministic.`,
+                    max_tokens_label: 'Max Tokens in Reply',
+                    max_tokens_explanation: `The maximum number of tokens to generate in reply.<br>
+                                            Note: This setting is only a limit on the number of tokens in the generated content.<br>
+                                            Meanwhile, the total length of input tokens and generated tokens in each message is also limited.<br>
+                                            The specific limit depends on the model. For the gpt-3.5-turbo model, the limit is 4096.<br>
+                                            * Tokens are the processing units of language models.<br>
+                                            100 tokens generally correspond to 75 common English words.`,
+                    max_token_inf_check_label: 'Unlimited',
+                    presence_penalty_label: 'Avoid Repetition (By Presence)',
+                    presence_penalty_explanation: `Higher values will make the output less likely to repeat previous words in the same reply.<br>
+                                                This adjustment is based on whether a token appears in the text so far, not its frequency.<br>
+                                                According to OPENAI, increasing this value will make the model more likely to talk about new topics.`,
+                    frequency_penalty_label: 'Avoid Repetition (By Frequency)',
+                    frequency_penalty_explanation: `Higher values will make the output less likely to repeat previous words in the same reply.<br>
+                                                    This adjustment is based on the existing frequency of a token in the text so far.<br>
+                                                    According to OPENAI, increasing this value will make the model less likely to repeat the same line verbatim.`,
+                    frequency_penalty_warning: 'Limit the reply length when trying negative values (forcing repetition) otherwise the same word may fill up the reply quota.',
+                    stop_sequences_label: 'Stop Sequences',
+                    stop_sequences_explanation: `When these words are generated, the generation will stop.<br>
+                                                Up to 4 sequences can be set.`,
+                    stop_sequences_button_label: 'Enter',
+                    logit_bias_label: 'Preference Words',
+                    logit_bias_value_placeholder: '-100~100',
+                    logit_bias_explanation: `Set the preference (probability of appearance) of specific words in the generated content.<br>
+                                            The value range is -100 to 100. The larger the value, the more likely it is to appear.<br>
+                                            A large negative value prevents a specific word from being used, but it is not absolute.<br>
+                                            A large positive value may force a specific word to appear. Note: No limit on the number of appearances.<br>
+                                            It is recommended to start testing from -1 to 1, and then adjust it step by step.`,
+                    logit_bias_warning: 'Limit the reply length when try large positive values (forcing appearance) otherwise the same word may fill up the reply quota.',
+                    current_messages_tokens_label: 'Current Messages Tokens',
+                    current_messages_tokens_explanation: `Calculate the token number of current messages.<br>
+                                                        Including the selected history messages and the new message.`,
+                    current_messages_tokens_button_label: 'Calculate',
                 };
                 const unlocalized = {
                     api_key_choice: 'default',
                     api_key_custom: '',
+                    system_role_content: '',
+                    temperature: 1,
+                    max_tokens: 2048,
+                    max_tokens_inf: true,
+                    presence_penalty: 0,
+                    frequency_penalty: 0,
+                    stop_sequences: [],
+                    stop_sequences_input: '',
+                    logit_bias: {},
+                    logit_bias_key_input: '',
+                    logit_bias_value_input: '',
+                    current_messages_tokens: null,
+                    current_messages_tokens_fetching: false,
                     message_input: '',
                     socket: null,
                     is_busy: false,
@@ -176,19 +463,49 @@ It is recommended to only send the key historical messages. No more than 20 at e
                         autoplay: false,
                         controls: true,
                         sources: []
-                    }
+                    },
+                    gear_svg_html: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear" viewBox="0 0 16 16">
+                                        <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+                                        <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
+                                    </svg>`,
+                    info_svg_html: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+                                        <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+                                    </svg>`,
+                    warning_svg_html: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-triangle" viewBox="0 0 16 16">
+                                            <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.146.146 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 0 1-.054.06.116.116 0 0 1-.066.017H1.146a.115.115 0 0 1-.066-.017.163.163 0 0 1-.054-.06.176.176 0 0 1 .002-.183L7.884 2.073a.147.147 0 0 1 .054-.057zm1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566z"/>
+                                            <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995z"/>
+                                        </svg>`,
                 };
                 return { ...localized, ...unlocalized};
             },
             computed: {
-                video_mode_button_text() {
-                    return this.is_video_mode ? this.video_mode_button_on : this.video_mode_button_off;
-                },
                 content_messages() {
                     return this.messages.filter(message => message.role === 'assistant' || message.role === 'user');
                 },
             },
+            watch: {
+
+            },
             methods: {
+                systemAndCheckedMessages() {
+                    const systemAndCheckedMessages = [];
+                    if (this.system_role_content !== '') {
+                        systemAndCheckedMessages.push({
+                            content: this.system_role_content,
+                            role: 'system',
+                        });
+                    }
+                    this.content_messages.forEach(message => {
+                        if (message.is_checked) {
+                            systemAndCheckedMessages.push({
+                                content: message.content,
+                                role: message.role,
+                            });
+                        }
+                    });
+                    return systemAndCheckedMessages;
+                },
                 sendMessages() {
                     if (this.message_input === '') {
                         return
@@ -197,20 +514,34 @@ It is recommended to only send the key historical messages. No more than 20 at e
                         return
                     }
 
-                    const messages = this.content_messages
-                        .filter(message => message.is_checked)
-                        .map(message => { return { content: message.content, role: message.role } });
-                    messages.push({
+                    const includedMessages = this.systemAndCheckedMessages();
+                    includedMessages.push({
                         content: this.message_input,
                         role: 'user',
                     });
                     const data = {
                         key_type: this.api_key_choice,
-                        messages: messages,
+                        messages: includedMessages,
                         video: this.is_video_mode,
+                        temperature: this.temperature,
                     }
                     if (this.api_key_choice === 'custom') {
                         data.api_key = this.api_key_custom;
+                    }
+                    if (!this.max_tokens_inf) {
+                        data.max_tokens = this.max_tokens;
+                    }
+                    if (this.presence_penalty !== 0) {
+                        data.presence_penalty = this.presence_penalty;
+                    }
+                    if (this.frequency_penalty !== 0) {
+                        data.frequency_penalty = this.frequency_penalty;
+                    }
+                    if (this.stop_sequences.length > 0) {
+                        data.stop_sequences = this.stop_sequences;
+                    }
+                    if (Object.keys(this.logit_bias).length > 0) {
+                        data.logit_bias = this.logit_bias;
                     }
 
                     this.messages.push({
@@ -220,15 +551,19 @@ It is recommended to only send the key historical messages. No more than 20 at e
                     });
                     this.message_input = '';
                     this.is_busy = true;
+                    this.current_messages_tokens = null;
                     
-                    axios.post('/api/messagev2', data)
+                    axios.post('/api/messagev3', data)
                         .then(response => {
                             this.is_busy = false;
-                            if (response.data.error_code) {
+                            if ("error_code" in response.data) {
                                 this.messages.push({
                                     content: this.error_codes[response.data.error_code],
                                     role: 'error'
                                 });
+                                if ("message" in response.data) {
+                                    console.log(response.data.message)
+                                }
                                 return
                             }
                             this.messages.push({
@@ -247,6 +582,31 @@ It is recommended to only send the key historical messages. No more than 20 at e
                             });
                             this.is_busy = false;
                             console.log(error);
+                        });
+                },
+                calculateMessagesTokens() {
+                    const includedMessages = this.systemAndCheckedMessages();
+                    if (this.message_input !== '') {
+                        includedMessages.push({
+                            content: this.message_input,
+                            role: 'user',
+                        });
+                    }
+                    if (includedMessages.length === 0) {
+                        this.current_messages_tokens = 0;
+                        return
+                    }
+                    this.current_messages_tokens_fetching = true;
+                    axios.post('/api/tokens', {
+                        messages: includedMessages,
+                    })
+                        .then(response => {
+                            this.current_messages_tokens = response.data.tokens;
+                            this.current_messages_tokens_fetching = false;
+                        })
+                        .catch(error => {
+                            console.log(error);
+                            this.current_messages_tokens_fetching = false;
                         });
                 },
                 playUrl(url) {
@@ -278,7 +638,42 @@ It is recommended to only send the key historical messages. No more than 20 at e
                             message.is_checked = false;
                         });
                     }
-                }
+                    this.current_messages_tokens = null;
+                },
+                addStopSequence() {
+                    if (this.stop_sequences_input === '') {
+                        return
+                    }
+                    if (this.stop_sequences.includes(this.stop_sequences_input)) {
+                        return
+                    }
+                    this.stop_sequences.push(this.stop_sequences_input);
+                    this.stop_sequences_input = '';
+                },
+                removeStopSequence(stopSequence) {
+                    this.stop_sequences = this.stop_sequences.filter(item => item !== stopSequence);
+                },
+                addOrUpdateLogitBias() {
+                    if (this.logit_bias_key_input === '' || this.logit_bias_value_input === '') {
+                        return
+                    }
+                    let value = parseFloat(this.logit_bias_value_input );
+                    if (isNaN(value)) {
+                        return
+                    }
+                    if (value > 100) {
+                        value = 100.0;
+                    }
+                    if (value < -100) {
+                        value = -100.0;
+                    }
+                    this.logit_bias[this.logit_bias_key_input] = value;
+                    this.logit_bias_key_input = '';
+                    this.logit_bias_value_input = '';
+                },
+                removeLogitBias(logitBiasKey) {
+                    delete this.logit_bias[logitBiasKey];
+                },
             },
             mounted() {
                 player = videojs(document.getElementById('robotVideo'), this.videoOptions, () => {
@@ -289,6 +684,14 @@ It is recommended to only send the key historical messages. No more than 20 at e
                 player.on('ended', () => {
                     player.hasStarted(false);
                 });
+                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl, {
+                        placement: 'auto',
+                        html: true,
+                        template: '<div class="tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner text-start small"></div></div>'
+                    })
+                })
             },
         });
         app.mount('#app');

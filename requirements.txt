@@ -1,6 +1,7 @@
 librosa
 Flask
 openai
+tiktoken
 python-dotenv
 APScheduler
 google-cloud-texttospeech
