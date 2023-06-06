@@ -1,9 +1,9 @@
-librosa
+# librosa
 Flask
 openai
 tiktoken
 python-dotenv
 APScheduler
-google-cloud-texttospeech
-opencv-python
-torch
+# google-cloud-texttospeech
+# opencv-python
+# torch
