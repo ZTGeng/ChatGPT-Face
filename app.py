@@ -3,19 +3,19 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 import openai, tiktoken
-from google.cloud import texttospeech
+# from google.cloud import texttospeech
 from markupsafe import escape
-from wav2lip.wav2lip import FaceVideoMaker
+# from wav2lip.wav2lip import FaceVideoMaker
 import pytz
 
-work_dir = 'temp'
-if not os.path.exists(work_dir):
-    os.mkdir(work_dir)
-files_to_delete = []
+# work_dir = 'temp'
+# if not os.path.exists(work_dir):
+#     os.mkdir(work_dir)
+# files_to_delete = []
 
 print('服务器初始化...')
 app = Flask(__name__)
-faceVideoMaker = FaceVideoMaker(audio_dir=work_dir, video_dir=work_dir)
+# faceVideoMaker = FaceVideoMaker(audio_dir=work_dir, video_dir=work_dir)
 start_time = time.time()
 
 # OPENAI 相关
@@ -69,13 +69,13 @@ def hourly_maintain():
     reset_counter()
     print_log()
 
-    for file in files_to_delete:
-        os.remove(file)
-    files_to_delete.clear()
-    for filename in os.listdir(work_dir):
-        file = os.path.join(work_dir, filename)
-        if os.path.isfile(file):
-            files_to_delete.append(file)
+    # for file in files_to_delete:
+    #     os.remove(file)
+    # files_to_delete.clear()
+    # for filename in os.listdir(work_dir):
+    #     file = os.path.join(work_dir, filename)
+    #     if os.path.isfile(file):
+    #         files_to_delete.append(file)
 
 scheduler = BackgroundScheduler(timezone=pytz.utc)
 next_hour_time = datetime.fromtimestamp(time.time() + 3600 - time.time() % 3600)
@@ -163,128 +163,31 @@ def remove_code_block(message):
         return ''.join([words for i, words in enumerate(message.split('```')) if i % 2 == 0])
 
 # GOOGLE Text-to-Speech 相关
-textToSpeechClient = texttospeech.TextToSpeechClient()
-voice = texttospeech.VoiceSelectionParams(
-    language_code="zh-CN",
-    ssml_gender=texttospeech.SsmlVoiceGender.FEMALE
-)
-audio_config = texttospeech.AudioConfig(
-    audio_encoding=texttospeech.AudioEncoding.LINEAR16,
-    speaking_rate=1.25
-)
+# textToSpeechClient = texttospeech.TextToSpeechClient()
+# voice = texttospeech.VoiceSelectionParams(
+#     language_code="zh-CN",
+#     ssml_gender=texttospeech.SsmlVoiceGender.FEMALE
+# )
+# audio_config = texttospeech.AudioConfig(
+#     audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+#     speaking_rate=1.25
+# )
 
-def text_to_speech(text, filename):
-    # test_time = time.time()
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-    response = textToSpeechClient.synthesize_speech(
-        input=synthesis_input, voice=voice, audio_config=audio_config)
-    audio_path = os.path.join(work_dir, f'{filename}.wav')
-    with open(audio_path, "wb") as out:
-        out.write(response.audio_content)
-        # print('TTS 测试时间：' + str(time.time() - test_time))
+# def text_to_speech(text, filename):
+#     # test_time = time.time()
+#     synthesis_input = texttospeech.SynthesisInput(text=text)
+#     response = textToSpeechClient.synthesize_speech(
+#         input=synthesis_input, voice=voice, audio_config=audio_config)
+#     audio_path = os.path.join(work_dir, f'{filename}.wav')
+#     with open(audio_path, "wb") as out:
+#         out.write(response.audio_content)
+#         # print('TTS 测试时间：' + str(time.time() - test_time))
 
 # Flask 路由
 @app.route('/')
 def index():
     return app.send_static_file('index.html')
 
-@app.route('/api/message', methods=['POST'])
-def message_deprecate():
-    data = request.json
-    # print(data)
-    useSiteApiKey = data.get('key_type') == 'default'
-    if useSiteApiKey:
-        if is_limit_reached():
-            # Error code 1: 本站 api-key 超过使用限制
-            return jsonify({'error_code': 1}), 200
-    # print("before fetch_chat_response")
-    try:
-        if useSiteApiKey:
-            response = fetch_chat_response_v1(data.get('message'), openai.api_key)
-            add_counter()
-        else:
-            api_key = data.get('api_key')
-            if not api_key:
-                # Error code 2: 外部 api-key 为空或无效
-                return jsonify({'error_code': 2}), 200
-            response = fetch_chat_response_v1(data.get('message'), api_key)
-    except openai.error.AuthenticationError as e:
-        # Error code 1: 本站 api-key 欠费或无效，按照超过使用限制处理
-        # （因为本站 api-key 的任何信息都应避免暴露，所以相关错误统一返回超过使用限制）
-        # Error code 2: 外部 api-key 为空或无效
-        return jsonify({'error_code': 1 if useSiteApiKey else 2}), 200
-    except openai.error.RateLimitError as e:
-        # Error code 3: api-key 一定时间内使用太过频繁
-        return jsonify({'error_code': 3}), 200
-    except (openai.error.APIError, openai.error.Timeout, openai.error.APIConnectionError) as e:
-        # Error code 4: OPENAI API 服务异常
-        return jsonify({'error_code': 4}), 200
-    except Exception as e:
-        # Error code 0: 未知错误
-        return jsonify({'error_code': 0}), 200
-    
-    message = parse_chat_response(response, useSiteApiKey)
-
-    is_video_mode = data.get('video')
-    # print(f'is_video_mode: {is_video_mode}')
-    if not is_video_mode:
-        return jsonify({'message': escape(message)}), 200
-
-    message_no_code_block = remove_code_block(message)
-    id = str(uuid.uuid4())[:8]
-    text_to_speech(message_no_code_block, id)
-    faceVideoMaker.makeVideo(id)
-
-    return jsonify({'message': escape(message), 'video_url': f'/{work_dir}/{id}.mp4'}), 200
-
-@app.route('/api/messagev2', methods=['POST'])
-def message_v2():
-    data = request.json
-    # print(data)
-    useSiteApiKey = data.get('key_type') == 'default'
-    if useSiteApiKey:
-        if is_limit_reached():
-            # Error code 1: 本站 api-key 超过使用限制
-            return jsonify({'error_code': 1}), 200
-    # print("before fetch_chat_response")
-    try:
-        if useSiteApiKey:
-            response = fetch_chat_response(data.get('messages'), openai.api_key)
-            add_counter()
-        else:
-            api_key = data.get('api_key')
-            if not api_key:
-                # Error code 2: 外部 api-key 为空或无效
-                return jsonify({'error_code': 2}), 200
-            response = fetch_chat_response(data.get('messages'), api_key)
-    except openai.error.AuthenticationError as e:
-        # Error code 1: 本站 api-key 欠费或无效，按照超过使用限制处理
-        # （因为本站 api-key 的任何信息都应避免暴露，所以相关错误统一返回超过使用限制）
-        # Error code 2: 外部 api-key 为空或无效
-        return jsonify({'error_code': 1 if useSiteApiKey else 2}), 200
-    except openai.error.RateLimitError as e:
-        # Error code 3: api-key 一定时间内使用太过频繁
-        return jsonify({'error_code': 3}), 200
-    except (openai.error.APIError, openai.error.Timeout, openai.error.APIConnectionError) as e:
-        # Error code 4: OPENAI API 服务异常
-        return jsonify({'error_code': 4}), 200
-    except Exception as e:
-        # Error code 0: 未知错误
-        return jsonify({'error_code': 0}), 200
-    
-    message = parse_chat_response(response, useSiteApiKey)
-
-    is_video_mode = data.get('video')
-    # print(f'is_video_mode: {is_video_mode}')
-    if not is_video_mode:
-        return jsonify({'message': escape(message)}), 200
-
-    message_no_code_block = remove_code_block(message)
-    id = str(uuid.uuid4())[:8]
-    text_to_speech(message_no_code_block, id)
-    faceVideoMaker.makeVideo(id)
-
-    return jsonify({'message': escape(message), 'video_url': f'/{work_dir}/{id}.mp4'}), 200
 
 @app.route('/api/messagev3', methods=['POST'])
 def message_v3():
@@ -348,24 +251,24 @@ def message_v3():
     
     message = parse_chat_response(response, useSiteApiKey)
 
-    is_video_mode = data.get('video')
-    if not is_video_mode:
-        return jsonify({'message': escape(message)}), 200
+    # is_video_mode = data.get('video')
+    # if not is_video_mode:
+    return jsonify({'message': escape(message)}), 200
 
-    message_no_code_block = remove_code_block(message)
-    id = str(uuid.uuid4())[:8]
-    text_to_speech(message_no_code_block, id)
-    faceVideoMaker.makeVideo(id)
+    # message_no_code_block = remove_code_block(message)
+    # id = str(uuid.uuid4())[:8]
+    # text_to_speech(message_no_code_block, id)
+    # faceVideoMaker.makeVideo(id)
 
-    return jsonify({'message': escape(message), 'video_url': f'/{work_dir}/{id}.mp4'}), 200
+    # return jsonify({'message': escape(message), 'video_url': f'/{work_dir}/{id}.mp4'}), 200
 
 @app.route('/api/tokens', methods=['POST'])
 def get_tokens():
     return jsonify({'tokens': num_tokens_from_messages(request.json.get('messages'))}), 200
 
-@app.route(f'/{work_dir}/<path:filename>')
-def get_video_files(filename):
-    return send_from_directory(os.path.join(os.getcwd(), work_dir), filename)
+# @app.route(f'/{work_dir}/<path:filename>')
+# def get_video_files(filename):
+#     return send_from_directory(os.path.join(os.getcwd(), work_dir), filename)
 
 @app.route('/api/face_img')
 def face_img():

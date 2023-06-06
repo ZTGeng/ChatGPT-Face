@@ -8,7 +8,7 @@
     <meta name="author" content="Geng">
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-    <link href="https://vjs.zencdn.net/8.0.4/video-js.css" rel="stylesheet" />
+    <!-- <link href="https://vjs.zencdn.net/8.0.4/video-js.css" rel="stylesheet" /> -->
     <script src="https://cdn.jsdelivr.net/npm/vue@3.2.47/dist/vue.global.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
@@ -217,7 +217,7 @@
             </div>
         </div>
 
-        <div>
+        <!-- <div>
             <div style="height: 100px"></div>
             <div class="position-fixed d-inline-flex flex-column">
                 <input type="checkbox" class="btn-check" id="videoVisibilityBtn" v-model="is_video_mode" checked autocomplete="off">
@@ -226,7 +226,7 @@
                     <video id="robotVideo" class="video-js"></video>
                 </div>
             </div>
-        </div>
+        </div> -->
         
         
         <div class="row" style="min-height: 100%">
@@ -280,11 +280,11 @@
 
     </div>
 
-    <script src="https://vjs.zencdn.net/8.0.4/video.min.js"></script>
+    <!-- <script src="https://vjs.zencdn.net/8.0.4/video.min.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
     
     <script>
-        let player = null; // 使用全局变量是因为 video.js 的一个 bug。详见 https://github.com/videojs/video.js/issues/7418
+        // let player = null; // 使用全局变量是因为 video.js 的一个 bug。详见 https://github.com/videojs/video.js/issues/7418
         const { createApp } = Vue;
         const app = createApp({
             data() {
@@ -454,16 +454,16 @@
                     message_input: '',
                     socket: null,
                     is_busy: false,
-                    is_video_mode: true,
+                    // is_video_mode: true,
                     messages: [],
-                    videoOptions: {
-                        width: 256,
-                        height: 256,
-                        poster: '/api/face_img',
-                        autoplay: false,
-                        controls: true,
-                        sources: []
-                    },
+                    // videoOptions: {
+                    //     width: 256,
+                    //     height: 256,
+                    //     poster: '/api/face_img',
+                    //     autoplay: false,
+                    //     controls: true,
+                    //     sources: []
+                    // },
                     gear_svg_html: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear" viewBox="0 0 16 16">
                                         <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
                                         <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
@@ -522,7 +522,7 @@
                     const data = {
                         key_type: this.api_key_choice,
                         messages: includedMessages,
-                        video: this.is_video_mode,
+                        // video: this.is_video_mode,
                         temperature: this.temperature,
                     }
                     if (this.api_key_choice === 'custom') {
@@ -571,9 +571,9 @@
                                 role: 'assistant',
                                 is_checked: true,
                             });
-                            if (response.data.video_url) {
-                                this.playUrl(response.data.video_url);
-                            }
+                            // if (response.data.video_url) {
+                            //     this.playUrl(response.data.video_url);
+                            // }
                         })
                         .catch(error => {
                             this.messages.push({
@@ -609,13 +609,13 @@
                             this.current_messages_tokens_fetching = false;
                         });
                 },
-                playUrl(url) {
-                    player.src({
-                        src: url,
-                        type: 'video/mp4'
-                    });
-                    player.play();
-                },
+                // playUrl(url) {
+                //     player.src({
+                //         src: url,
+                //         type: 'video/mp4'
+                //     });
+                //     player.play();
+                // },
                 decorateMessage(message) {
                     var newMessage = '';
                     message.trim().split("```").forEach((item, index) => {
@@ -675,24 +675,24 @@
                     delete this.logit_bias[logitBiasKey];
                 },
             },
-            mounted() {
-                player = videojs(document.getElementById('robotVideo'), this.videoOptions, () => {
-                    // console.log('onPlayerReady')
-                });
-                player.removeChild('BigPlayButton');
-                player.getChild('ControlBar').removeChild('fullscreenToggle');
-                player.on('ended', () => {
-                    player.hasStarted(false);
-                });
-                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                    return new bootstrap.Tooltip(tooltipTriggerEl, {
-                        placement: 'auto',
-                        html: true,
-                        template: '<div class="tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner text-start small"></div></div>'
-                    })
-                })
-            },
+            // mounted() {
+            //     player = videojs(document.getElementById('robotVideo'), this.videoOptions, () => {
+            //         // console.log('onPlayerReady')
+            //     });
+            //     player.removeChild('BigPlayButton');
+            //     player.getChild('ControlBar').removeChild('fullscreenToggle');
+            //     player.on('ended', () => {
+            //         player.hasStarted(false);
+            //     });
+            //     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            //     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            //         return new bootstrap.Tooltip(tooltipTriggerEl, {
+            //             placement: 'auto',
+            //             html: true,
+            //             template: '<div class="tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner text-start small"></div></div>'
+            //         })
+            //     })
+            // },
         });
         app.mount('#app');
     </script>
