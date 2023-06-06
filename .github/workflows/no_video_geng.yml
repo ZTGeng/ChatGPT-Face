@@ -61,4 +61,4 @@ jobs:
           app-name: 'geng'
           slot-name: 'Production'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_FBC5C093184A45C6941FE54C5A1C94CE }}
-          app-settings: OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          env: OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
