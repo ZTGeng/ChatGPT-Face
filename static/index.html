@@ -553,7 +553,7 @@
                     this.is_busy = true;
                     this.current_messages_tokens = null;
                     
-                    axios.post('/api/messagev3', data)
+                    axios.post('/api/message', data)
                         .then(response => {
                             this.is_busy = false;
                             if ("error_code" in response.data) {
