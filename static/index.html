@@ -51,7 +51,7 @@
                         </label>
                         <input class="me-2" type="text" placeholder="API-KEY" v-model="api_key_custom" aria-label="API-KEY">
                         <a class="text-primary" href="https://openai.com/pricing" target="_blank">
-                            <span data-bs-toggle="tooltip" data-bs-trigger="hover focus" :title="api_key_explanation">
+                            <span data-bs-toggle="tooltip" data-bs-trigger="hover focus" :data-bs-title="api_key_explanation">
                                 <svg v-html="info_svg_html" width="16" height="16"></svg>
                             </span>
                         </a>
@@ -61,7 +61,7 @@
                 <div class="mb-3">
                     <label class="form-label" for="systemContent">
                         {{ system_role_content_label }}
-                        <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="system_role_content_explanation">
+                        <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :data-bs-title="system_role_content_explanation">
                             <svg v-html="info_svg_html" width="16" height="16"></svg>
                         </span>
                     </label>
@@ -73,7 +73,7 @@
                         <div class="col-auto">
                             <label class="form-label" for="temperatureBar">
                                 {{ temperature_label }}
-                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="temperature_explanation">
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :data-bs-title="temperature_explanation">
                                     <svg v-html="info_svg_html" width="16" height="16"></svg>
                                 </span>
                             </label>
@@ -90,7 +90,7 @@
                         <div class="col-auto">
                             <label class="form-label" for="maxTokensBar">
                                 {{ max_tokens_label }}
-                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="max_tokens_explanation">
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :data-bs-title="max_tokens_explanation">
                                     <svg v-html="info_svg_html" width="16" height="16"></svg>
                                 </span>
                             </label>
@@ -113,7 +113,7 @@
                         <div class="col-auto">
                             <label class="form-label" for="presencepenaltyBar">
                                 {{ presence_penalty_label }}
-                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="presence_penalty_explanation">
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :data-bs-title="presence_penalty_explanation">
                                     <svg v-html="info_svg_html" width="16" height="16"></svg>
                                 </span>
                             </label>
@@ -130,7 +130,7 @@
                         <div class="col-auto">
                             <label class="form-label" for="frequencypenaltyBar">
                                 {{ frequency_penalty_label }}
-                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="frequency_penalty_explanation">
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :data-bs-title="frequency_penalty_explanation">
                                     <svg v-html="info_svg_html" width="16" height="16"></svg>
                                 </span>
                             </label>
@@ -147,7 +147,7 @@
                 <div class="mb-3">
                     <label class="form-label" for="stopSequencesButton">
                         {{ stop_sequences_label }}
-                        <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="stop_sequences_explanation">
+                        <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :data-bs-title="stop_sequences_explanation">
                             <svg v-html="info_svg_html" width="16" height="16"></svg>
                         </span>
                     </label>
@@ -168,7 +168,7 @@
                 <div class="mb-3">
                     <label class="form-label" for="logitBiasButton">
                         {{ logit_bias_label }}
-                        <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="logit_bias_explanation">
+                        <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :data-bs-title="logit_bias_explanation">
                             <svg v-html="info_svg_html" width="16" height="16"></svg>
                         </span>
                     </label>
@@ -194,7 +194,7 @@
                         <div class="col-auto">
                             <label class="form-label" for="calculateMessagesTokensButton">
                                 {{ current_messages_tokens_label }}
-                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="current_messages_tokens_explanation">
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :data-bs-title="current_messages_tokens_explanation">
                                     <svg v-html="info_svg_html" width="16" height="16"></svg>
                                 </span>
                             </label>
@@ -221,7 +221,7 @@
             <div style="height: 100px"></div>
             <div class="position-fixed d-inline-flex flex-column">
                 <input type="checkbox" class="btn-check" id="videoVisibilityBtn" v-model="is_video_mode" checked autocomplete="off">
-                <label class="btn btn-outline-secondary align-self-start mb-1" for="videoVisibilityBtn">{{ is_video_mode ? video_mode_button_on : video_mode_button_off }}</label>
+                <label class="btn btn-outline-secondary align-self-start mb-1" for="videoVisibilityBtn">{{ is_video_mode ? video_mode_button_off : video_mode_button_on }}</label>
                 <div v-show="is_video_mode">
                     <video id="robotVideo" class="video-js"></video>
                 </div>
@@ -247,18 +247,24 @@
                             </div>
                         </div>
                     </div>
-                    <div class="d-flex" style="min-height: 200px">
-                        <div class="form-check" v-if="content_messages.length > 0">
+                    <div class="d-flex" style="padding-bottom: 150px">
+                        <div class="form-check me-5" v-show="content_messages.length > 0">
                             <input class="form-check-input" type="checkbox" value="" id="selectAllCheck" @click="selectAll" checked>
                             <label class="form-check-label" for="selectAllCheck">
                                 {{ select_all_check_label }}
-                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :title="select_content_explanation">
+                                <span data-bs-toggle="tooltip" data-bs-trigger="hover focus click" :data-bs-title="select_content_explanation">
                                     <svg v-html="info_svg_html" width="16" height="16"></svg>
                                 </span>
                             </label>
                         </div>
-                        <div class="spinner-border text-secondary mx-auto" role="status" v-if="is_busy">
+                        <div class="spinner-border text-secondary" role="status" v-if="is_busy">
                             <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="d-flex align-items-end flex-column small ms-auto" v-if="show_delay_message">
+                            <a class="btn btn-outline-secondary btn-sm" href="#delayMessage" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="delayMessage">{{ delay_message_hint }}</a>
+                            <div class="collapse mt-2" id="delayMessage">
+                                <div class="card card-body" v-html="delay_message"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -276,7 +282,6 @@
                 </div>
             </div>
         </nav>
-
 
     </div>
 
@@ -310,8 +315,8 @@
                         4: 'OPENAI 服务器响应超时，请稍后再试。',
                         5: '消息过长。请减少您选择的历史消息。'
                     },
-                    video_mode_button_on: '视频模式已开启',  
-                    video_mode_button_off: '视频模式已关闭',
+                    video_mode_button_on: '开启视频模式',  
+                    video_mode_button_off: '关闭视频模式',
                     select_all_check_label: '全选',
                     select_content_explanation: `每次发送时，所有选中的历史消息会一起发送给 ChatGPT。<br>
                                                 ChatGPT 会根据对话历史生成回复。实现连续对话。<br>
@@ -360,6 +365,8 @@
                     current_messages_tokens_explanation: `在发送消息前，计算当前消息的 token 数。<br>
                                                         包括被选择的历史消息和输入的新消息。`,
                     current_messages_tokens_button_label: '计算',
+                    delay_message_hint: `为何如此缓慢？`,
+                    delay_message: `视频生成需要一定时间。关闭视频模式可以加快回复速度。`,
                 } :
                 {
                     page_title: 'Open AI Chatting',
@@ -384,8 +391,8 @@
                         5: 'Message too long. Please reduce the selected historical messages.'
                         
                     },
-                    video_mode_button_on: 'Video Mode On',
-                    video_mode_button_off: 'Video Mode Off',
+                    video_mode_button_on: 'Enable Video',
+                    video_mode_button_off: 'Disable Video',
                     select_all_check_label: 'Select All',
                     select_content_explanation: `All selected historical messages will be sent to ChatGPT on each send.<br>
                                                 ChatGPT replies based on the dialogue history. That's how continuous conversations works.<br>
@@ -434,6 +441,8 @@
                     current_messages_tokens_explanation: `Calculate the token number of current messages.<br>
                                                         Including the selected history messages and the new message.`,
                     current_messages_tokens_button_label: 'Calculate',
+                    delay_message_hint: `Why it takes so long?`,
+                    delay_message: `Video generation takes some time. Turning off video mode can speed up the reply.`,
                 };
                 const unlocalized = {
                     api_key_choice: 'default',
@@ -455,6 +464,8 @@
                     socket: null,
                     is_busy: false,
                     is_video_mode: true,
+                    show_delay_message: false,
+                    delay_message_delay_ms: 10000,
                     messages: [],
                     videoOptions: {
                         width: 256,
@@ -552,10 +563,16 @@
                     this.message_input = '';
                     this.is_busy = true;
                     this.current_messages_tokens = null;
+
+                    var delayMessageTimeout = setTimeout(() => {
+                        this.show_delay_message = true;
+                    }, this.delay_message_delay_ms);
                     
                     axios.post('/api/message', data)
                         .then(response => {
                             this.is_busy = false;
+                            clearTimeout(delayMessageTimeout);
+                            // this.show_delay_message = false;
                             if ("error_code" in response.data) {
                                 this.messages.push({
                                     content: this.error_codes[response.data.error_code],
@@ -581,6 +598,8 @@
                                 role: 'error'
                             });
                             this.is_busy = false;
+                            clearTimeout(delayMessageTimeout);
+                            // this.show_delay_message = false;
                             console.log(error);
                         });
                 },
@@ -674,6 +693,13 @@
                 removeLogitBias(logitBiasKey) {
                     delete this.logit_bias[logitBiasKey];
                 },
+                loadDelayMessage() {
+                    axios.get(navigator.language.slice(0, 2) === "zh" ? '/delay_message_zh' : '/delay_message_en')
+                        .then(response => {
+                            this.delay_message = response.data;
+                        })
+                        .catch(error => { /* 使用默认值 */ });
+                },
             },
             mounted() {
                 player = videojs(document.getElementById('robotVideo'), this.videoOptions, () => {
@@ -684,14 +710,13 @@
                 player.on('ended', () => {
                     player.hasStarted(false);
                 });
-                var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-                var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                    return new bootstrap.Tooltip(tooltipTriggerEl, {
-                        placement: 'auto',
-                        html: true,
-                        template: '<div class="tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner text-start small"></div></div>'
-                    })
-                })
+                const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+                const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {
+                    placement: 'auto',
+                    html: true,
+                    template: '<div class="tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner text-start small"></div></div>',
+                }))
+                this.loadDelayMessage();
             },
         });
         app.mount('#app');

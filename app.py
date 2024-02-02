@@ -274,3 +274,7 @@ def get_video_files(filename):
 def face_img():
     return send_from_directory(os.path.join(os.getcwd(), 'assets'), 'face_2.jpg')
 
+@app.route('/<path:filename>')
+def static_html(filename):
+    return app.send_static_file(f'{filename}.html')
+
