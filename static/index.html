@@ -694,7 +694,7 @@
                     delete this.logit_bias[logitBiasKey];
                 },
                 loadDelayMessage() {
-                    axios.get(navigator.language.slice(0, 2) === "zh" ? '/delay_message_zh' : '/delay_message_en')
+                    axios.get(navigator.language.slice(0, 2) === "zh" ? '/delay_message_zh.html' : '/delay_message_en.html')
                         .then(response => {
                             this.delay_message = response.data;
                         })

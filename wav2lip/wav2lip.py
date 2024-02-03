@@ -11,10 +11,10 @@ class FaceVideoMaker(object):
     # y1r 是实际替换时使用的 y1 坐标，默认约为 y1 与 y2 的中点。因为静态人脸图片的上半区在说话时几乎不发生改变，所以可只替换下半区。如果 y1r 为 None，则使用 y1。
     # 如果需要替换图片，可以（但没必要）使用一个叫 face_detection 的模型来检测新图片中人脸的位置以计算坐标。
     # face_detection 的代码详见：https://github.com/1adrianb/face-alignment，或见原 Wave2Lip 库中的引用：https://github.com/Rudrabha/Wav2Lip
-    def __init__(self, weights_file='wav2lip/weights/wav2lip_gan.pth', face_img='assets/face_200.png', coords=(34, 161, 51, 147), y1r=91, audio_dir='temp', video_dir='temp', fps=15, device='cpu'):
+    def __init__(self, weights_file='wav2lip/weights/wav2lip_gan.pth', face_img='assets/face_200.png', coords=(34, 161, 51, 147), y1r=91, audio_dir='temp', video_dir='temp', fps=15):
         self.audio_dir = audio_dir
         self.video_dir = video_dir
-        self.device = device
+        self.device = 'cuda' if (torch.cuda.is_available()) else 'cpu'
         self.fps = fps
         self.frame = cv2.imread(face_img)
         self.y1, self.y2, self.x1, self.x2 = coords
@@ -26,7 +26,7 @@ class FaceVideoMaker(object):
         self.face = cv2.resize(self.face, (self.img_size, self.img_size))
 
         weights_path = os.path.join(os.getcwd(), weights_file)
-        print('加载模型...')
+        print('加载模型于', self.device, '...')
         weights = torch.load(weights_path, map_location=torch.device(self.device))
         s = weights["state_dict"]
         new_s = {}
@@ -34,7 +34,7 @@ class FaceVideoMaker(object):
             new_s[k.replace('module.', '')] = v
         model = Wav2Lip()
         model.load_state_dict(new_s)
-        model = model.to(device)
+        model = model.to(self.device)
         self.model = model.eval()
 
     def makeVideo(self, id):

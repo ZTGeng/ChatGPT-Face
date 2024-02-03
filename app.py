@@ -276,5 +276,5 @@ def face_img():
 
 @app.route('/<path:filename>')
 def static_html(filename):
-    return app.send_static_file(f'{filename}.html')
+    return app.send_static_file(filename)
 
