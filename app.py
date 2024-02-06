@@ -165,8 +165,14 @@ def remove_code_block(message):
 
 # GOOGLE Text-to-Speech 相关
 textToSpeechClient = texttospeech.TextToSpeechClient()
-voice = texttospeech.VoiceSelectionParams(
-    language_code="zh-CN",
+voice_en = texttospeech.VoiceSelectionParams(
+    language_code="en-US",
+    name="en-US-Wavenet-F",
+    ssml_gender=texttospeech.SsmlVoiceGender.FEMALE
+)
+voice_zh = texttospeech.VoiceSelectionParams(
+    language_code="cmn-CN",
+    name="cmn-CN-Wavenet-D",
     ssml_gender=texttospeech.SsmlVoiceGender.FEMALE
 )
 audio_config = texttospeech.AudioConfig(
@@ -174,9 +180,10 @@ audio_config = texttospeech.AudioConfig(
     speaking_rate=1.25
 )
 
-def text_to_speech(text, filename):
+def text_to_speech(text, lang, filename):
     # test_time = time.time()
     synthesis_input = texttospeech.SynthesisInput(text=text)
+    voice = voice_zh if lang == 'zh' else voice_en
     response = textToSpeechClient.synthesize_speech(
         input=synthesis_input, voice=voice, audio_config=audio_config)
     audio_path = os.path.join(work_dir, f'{filename}.wav')
@@ -255,9 +262,10 @@ def message_v3():
     if not is_video_mode:
         return jsonify({'message': escape(message)}), 200
 
+    lang = data.get('language_code')
     message_no_code_block = remove_code_block(message)
     id = str(uuid.uuid4())[:8]
-    text_to_speech(message_no_code_block, id)
+    text_to_speech(message_no_code_block, lang, id)
     faceVideoMaker.makeVideo(id)
 
     return jsonify({'message': escape(message), 'video_url': f'/{work_dir}/{id}.mp4'}), 200

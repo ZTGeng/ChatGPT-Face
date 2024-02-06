@@ -222,12 +222,24 @@
             <div class="position-fixed d-inline-flex flex-column">
                 <input type="checkbox" class="btn-check" id="videoVisibilityBtn" v-model="is_video_mode" checked autocomplete="off">
                 <label class="btn btn-outline-secondary align-self-start mb-1" for="videoVisibilityBtn">{{ is_video_mode ? video_mode_button_off : video_mode_button_on }}</label>
-                <div v-show="is_video_mode">
+                <div class="shadow p-2" v-show="is_video_mode">
                     <video id="robotVideo" class="video-js"></video>
+                    <div class="mt-2">
+                        <label class="form-label mb-0" for="voiceLanguageSelect">{{ voice_language_label }}</label>
+                        <div id="voiceLanguageSelect" class="d-flex mt-2">
+                            <div class="form-check me-2">
+                                <input class="form-check-input" type="radio" name="voiceLanguage" id="voiceLanguageEn" value="en" v-model="voice_language">
+                                <label class="form-check-label" for="voiceLanguageEn">English</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="voiceLanguage" id="voiceLanguageZh" value="zh" v-model="voice_language">
+                                <label class="form-check-label" for="voiceLanguageZh">中文</label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        
         
         <div class="row" style="min-height: 100%">
             <div class="col col-4" style="min-height: 100%">
@@ -317,6 +329,7 @@
                     },
                     video_mode_button_on: '开启视频模式',  
                     video_mode_button_off: '关闭视频模式',
+                    voice_language_label: '语音语言',
                     select_all_check_label: '全选',
                     select_content_explanation: `每次发送时，所有选中的历史消息会一起发送给 ChatGPT。<br>
                                                 ChatGPT 会根据对话历史生成回复。实现连续对话。<br>
@@ -393,6 +406,7 @@
                     },
                     video_mode_button_on: 'Enable Video',
                     video_mode_button_off: 'Disable Video',
+                    voice_language_label: 'Voice Language',
                     select_all_check_label: 'Select All',
                     select_content_explanation: `All selected historical messages will be sent to ChatGPT on each send.<br>
                                                 ChatGPT replies based on the dialogue history. That's how continuous conversations works.<br>
@@ -464,10 +478,11 @@
                     socket: null,
                     is_busy: false,
                     is_video_mode: true,
+                    voice_language: 'en',
                     show_delay_message: false,
                     delay_message_delay_ms: 10000,
                     messages: [],
-                    videoOptions: {
+                    video_options: {
                         width: 256,
                         height: 256,
                         poster: '/api/face_img',
@@ -535,6 +550,9 @@
                         messages: includedMessages,
                         video: this.is_video_mode,
                         temperature: this.temperature,
+                    }
+                    if (this.is_video_mode) {
+                        data.language_code = this.voice_language;
                     }
                     if (this.api_key_choice === 'custom') {
                         data.api_key = this.api_key_custom;
@@ -702,7 +720,7 @@
                 },
             },
             mounted() {
-                player = videojs(document.getElementById('robotVideo'), this.videoOptions, () => {
+                player = videojs(document.getElementById('robotVideo'), this.video_options, () => {
                     // console.log('onPlayerReady')
                 });
                 player.removeChild('BigPlayButton');
@@ -710,7 +728,8 @@
                 player.on('ended', () => {
                     player.hasStarted(false);
                 });
-                const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
+                this.voice_language = navigator.language.slice(0, 2);
+                const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
                 const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {
                     placement: 'auto',
                     html: true,
