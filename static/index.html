@@ -37,6 +37,17 @@
                 <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
             </div>
             <div class="offcanvas-body">
+                <div class="d-flex mb-3">
+                    <div class="form-check me-2">
+                        <input class="form-check-input" type="radio" name="model" id="model35" :value="false" v-model="use_model_4">
+                        <label class="form-check-label" for="model35">GPT-3.5</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="model" id="model4" :value="true" v-model="use_model_4">
+                        <label class="form-check-label" for="model4">GPT-4</label>
+                    </div>
+                </div>
+
                 <div class="mb-3">
                     <div class="form-check">
                         <input class="form-check-input" type="radio" v-model="api_key_choice" name="apiKeyChoice" value="default" id="apiKeyChoiceDefault" checked>
@@ -95,15 +106,15 @@
                                 </span>
                             </label>
                         </div>
-                        <div class="col-auto ms-auto me-2" :class="max_tokens_inf ? 'text-secondary' : 'text-dark'">
+                        <div class="col-auto ms-auto me-2" :class="max_tokens_no_limit ? 'text-secondary' : 'text-dark'">
                             <label>{{ max_tokens }}</label>
                         </div>
                     </div>
-                    <input type="range" class="form-range" v-model="max_tokens" :disabled="max_tokens_inf" min="1" max="2048" step="1" id="maxTokensBar">
+                    <input type="range" class="form-range" v-model="max_tokens" :disabled="max_tokens_no_limit" min="1" max="2048" step="1" id="maxTokensBar">
                     <div class="row">
                         <div class="col-auto ms-auto">
                             <label class="me-2" for="maxTokensInfCheck">{{ max_token_inf_check_label }}</label>
-                            <input class="form-check-input" v-model="max_tokens_inf" type="checkbox" id="maxTokensInfCheck" checked>
+                            <input class="form-check-input" v-model="max_tokens_no_limit" type="checkbox" id="maxTokensInfCheck" checked>
                         </div>
                     </div>
                 </div>
@@ -311,9 +322,8 @@
                     api_key_choice_default: '使用本站 API-KEY（有流量限制）',
                     api_key_choice_custom: '使用我的 API-KEY：',
                     api_key_explanation: `关于 OPENAI API-KEY：<br>
-                                        目前注册 openai.com 开发者用户时，会获得 5 美元的免费额度。<br>
                                         开发者用户可以免费创建 API-KEY，但是使用 API-KEY 时会消耗额度。<br>
-                                        在免费额度用完后，需要提供有效付款方式继续使用API-KEY。<br>
+                                        在免费额度用完后，需要提供有效付款方式继续使用 API-KEY。<br>
                                         并不推荐在不受信任的站点使用自己的 API-KEY。<br>
                                         了解详细信息请点击。`,
                     message_input_placeholder: 'Shift + Enter 发送',
@@ -321,7 +331,7 @@
                     server_error_message: '服务器发生错误，请稍后再试。',
                     error_codes: {
                         0: '发生了未知错误，请稍后再试。',
-                        1: '本站 API-KEY 当前小时的流量已用完，请在下一个整点重试。',
+                        1: '本站 API-KEY 当天流量已用完，请明天重试或使用您自己的 API-KEY。',
                         2: '您提供的 API-KEY 无效。',
                         3: 'API 因访问太过频繁而被暂时限制使用，请稍后再试。',
                         4: 'OPENAI 服务器响应超时，请稍后再试。',
@@ -339,8 +349,7 @@
                     setting_title: '设置',
                     system_role_content_label: '系统角色消息（非必需）',
                     system_role_content_placeholder: '你是一个友好的助理机器人。',
-                    system_role_content_explanation: `系统角色消息会加在发送给 ChatGPT 的对话开始处，以设置其行为模式。<br>
-                                                    根据 OPENAI 文档，gpt-3.5-turbo-0301 模型对这一信息并不总是很敏感。`,
+                    system_role_content_explanation: `系统角色消息会加在发送给 ChatGPT 的对话开始处，以设置其行为模式。`,
                     temperature_label: '随机性',
                     temperature_explanation: `数值越高，生成的回复越随机。<br>
                                             数值越低，生成的回复越是集中和确定。`,
@@ -348,7 +357,7 @@
                     max_tokens_explanation: `每次生成的回复最多包含的 token 数。<br>
                                             注意：这个设置仅是对于回复的 token 数的限制。<br>
                                             与此同时，每次发送的消息与生成的回复所包含的总 token 数也受到限制，<br>
-                                            具体限额依模型而不同。对 gpt-3.5-turbo 模型而言，限额为 4096。<br>
+                                            具体限额依模型而不同。<br>
                                             * Token 是语言模型的处理单位。中文字数无法直接换算 token 数。<br>
                                             经验来说，100 中文字产生的 tokens 大约在 100 到 200 之间。`,
                     max_token_inf_check_label: '不限',
@@ -387,7 +396,6 @@
                     api_key_choice_default: 'Use API-KEY On This Site (Limited Traffic)',
                     api_key_choice_custom: 'Use My API-KEY:',
                     api_key_explanation: `About OPENAI API-KEY:<br>
-                                        Currently, when registering as a developer user on openai.com, you will receive $5 in free credits.<br>
                                         Developer users can create API-KEYs for free, but using API-KEYs will consume credits.<br>
                                         After the free credits are used up, you need to provide a valid payment method to continue using API-KEYs.<br>
                                         It is not recommended to use your own API-KEY on untrusted sites.<br>
@@ -397,7 +405,7 @@
                     server_error_message: 'Server error, please try again later.',
                     error_codes: {
                         0: 'An unknown error occurred, please try again later.',
-                        1: 'The hourly traffic of the API-KEY on this site has been used up, please try again at the next hour.',
+                        1: 'The API-KEY on this site has run out of traffic for today, please try again tomorrow or use your own API-KEY.',
                         2: 'Your API-KEY is invalid.',
                         3: 'The API usage is temporarily restricted due to excessive access, please try again later.',
                         4: 'OPENAI server response timed out, please try again later.',
@@ -417,8 +425,7 @@
                     system_role_content_label: 'System Role Message (Optional)',
                     system_role_content_placeholder: 'You are a helpful assistant.',
                     system_role_content_explanation: `System role message will be added to the beginning of the conversation sent to ChatGPT,<br>
-                                                    to help setting the behavior of the assistant.<br>
-                                                    According to OPENAI, the gpt-3.5-turbo-0301 model does not always pay strong attention to this.`,
+                                                    to help setting the behavior of the assistant.<br>`,
                     temperature_label: 'Randomness',
                     temperature_explanation: `Higher values will make the output more random.<br>
                                             Lower values will make it more focused and deterministic.`,
@@ -426,7 +433,7 @@
                     max_tokens_explanation: `The maximum number of tokens to generate in reply.<br>
                                             Note: This setting is only a limit on the number of tokens in the generated content.<br>
                                             Meanwhile, the total length of input tokens and generated tokens in each message is also limited.<br>
-                                            The specific limit depends on the model. For the gpt-3.5-turbo model, the limit is 4096.<br>
+                                            The specific limit depends on the model.<br>
                                             * Tokens are the processing units of language models.<br>
                                             100 tokens generally correspond to 75 common English words.`,
                     max_token_inf_check_label: 'Unlimited',
@@ -459,12 +466,13 @@
                     delay_message: `Video generation takes some time. Turning off video mode can speed up the reply.`,
                 };
                 const unlocalized = {
+                    use_model_4: false,
                     api_key_choice: 'default',
                     api_key_custom: '',
                     system_role_content: '',
                     temperature: 1,
                     max_tokens: 2048,
-                    max_tokens_inf: true,
+                    max_tokens_no_limit: true,
                     presence_penalty: 0,
                     frequency_penalty: 0,
                     stop_sequences: [],
@@ -546,6 +554,7 @@
                         role: 'user',
                     });
                     const data = {
+                        use_model_4: this.use_model_4,
                         key_type: this.api_key_choice,
                         messages: includedMessages,
                         video: this.is_video_mode,
@@ -557,7 +566,7 @@
                     if (this.api_key_choice === 'custom') {
                         data.api_key = this.api_key_custom;
                     }
-                    if (!this.max_tokens_inf) {
+                    if (!this.max_tokens_no_limit) {
                         data.max_tokens = this.max_tokens;
                     }
                     if (this.presence_penalty !== 0) {
@@ -636,6 +645,7 @@
                     this.current_messages_tokens_fetching = true;
                     axios.post('/api/tokens', {
                         messages: includedMessages,
+                        use_model_4: this.use_model_4,
                     })
                         .then(response => {
                             this.current_messages_tokens = response.data.tokens;
