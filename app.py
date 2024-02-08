@@ -1,7 +1,7 @@
-import os, time, uuid
+import os, time, uuid, json, wave
 from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, Response, jsonify, send_from_directory
 import openai, tiktoken
 from openai import OpenAI
 from google.cloud import texttospeech
@@ -13,6 +13,12 @@ work_dir = 'temp'
 if not os.path.exists(work_dir):
     os.mkdir(work_dir)
 files_to_delete = []
+
+message_id_to_generators = {}
+
+# 根据语音长度推算视频合成时间
+audio_length_avg = 1
+video_generation_time_avg = 1
 
 print('服务器初始化...')
 app = Flask(__name__)
@@ -29,14 +35,14 @@ model_4_token_limit = 128000
 # OPENAI token 使用统计
 # openai.api_key = os.getenv("OPENAI_API_KEY")
 
-site_api_key_completion_tokens_model_35 = 0
-site_api_key_prompt_tokens_model_35 = 0
-site_api_key_total_tokens_model_35 = 0
-site_api_key_requests_model_35 = 0
-site_api_key_completion_tokens_model_4 = 0
-site_api_key_prompt_tokens_model_4 = 0
-site_api_key_total_tokens_model_4 = 0
-site_api_key_requests_model_4 = 0
+default_api_key_completion_tokens_model_35 = 0
+default_api_key_prompt_tokens_model_35 = 0
+default_api_key_total_tokens_model_35 = 0
+default_api_key_requests_model_35 = 0
+default_api_key_completion_tokens_model_4 = 0
+default_api_key_prompt_tokens_model_4 = 0
+default_api_key_total_tokens_model_4 = 0
+default_api_key_requests_model_4 = 0
 custom_api_key_completion_tokens = 0
 custom_api_key_prompt_tokens = 0
 custom_api_key_total_tokens = 0
@@ -46,15 +52,15 @@ def print_log():
     running_time = time.time() - start_time
     print('运行持续时间：' + str(int(running_time / 3600)) + ' 小时 ' + str(int(running_time % 3600 / 60)) + ' 分钟 ' + str(int(running_time % 60)) + ' 秒')
     print('------------------------------------')
-    print('本站 api-key GPT3.5     conversations: ' + str(site_api_key_requests_model_35))
-    print('本站 api-key GPT3.5 completion tokens: ' + str(site_api_key_completion_tokens_model_35))
-    print('本站 api-key GPT3.5     prompt tokens: ' + str(site_api_key_prompt_tokens_model_35))
-    print('本站 api-key GPT3.5      total tokens: ' + str(site_api_key_total_tokens_model_35))
+    print('本站 api-key GPT3.5     conversations: ' + str(default_api_key_requests_model_35))
+    print('本站 api-key GPT3.5 completion tokens: ' + str(default_api_key_completion_tokens_model_35))
+    print('本站 api-key GPT3.5     prompt tokens: ' + str(default_api_key_prompt_tokens_model_35))
+    print('本站 api-key GPT3.5      total tokens: ' + str(default_api_key_total_tokens_model_35))
     print('------------------------------------')
-    print('本站 api-key GPT4       conversations: ' + str(site_api_key_requests_model_4))
-    print('本站 api-key GPT4   completion tokens: ' + str(site_api_key_completion_tokens_model_4))
-    print('本站 api-key GPT4       prompt tokens: ' + str(site_api_key_prompt_tokens_model_4))
-    print('本站 api-key GPT4        total tokens: ' + str(site_api_key_total_tokens_model_4))
+    print('本站 api-key GPT4       conversations: ' + str(default_api_key_requests_model_4))
+    print('本站 api-key GPT4   completion tokens: ' + str(default_api_key_completion_tokens_model_4))
+    print('本站 api-key GPT4       prompt tokens: ' + str(default_api_key_prompt_tokens_model_4))
+    print('本站 api-key GPT4        total tokens: ' + str(default_api_key_total_tokens_model_4))
     print('------------------------------------')
     print('外部 api-key           conversations: ' + str(custom_api_key_requests))
     print('外部 api-key       completion tokens: ' + str(custom_api_key_completion_tokens))
@@ -68,17 +74,15 @@ token_usage_daily_model_35 = 0
 token_usage_daily_model_4 = 0
 
 def reset_counter():
-    global token_usage_daily_model_35
-    global token_usage_daily_model_4
+    global token_usage_daily_model_35, token_usage_daily_model_4
     token_usage_daily_model_35 = 0
     token_usage_daily_model_4 = 0
 
 def update_counter(is_model_4, tokens_used):
+    global token_usage_daily_model_35, token_usage_daily_model_4
     if is_model_4:
-        global token_usage_daily_model_4
         token_usage_daily_model_4 += tokens_used
     else:
-        global token_usage_daily_model_35
         token_usage_daily_model_35 += tokens_used
 
 def is_limit_reached(is_model_4):
@@ -117,6 +121,9 @@ def num_tokens_from_string(text: str, use_model_4):
     return len(encode(text, use_model_4))
 
 def num_tokens_from_messages(messages, use_model_4):
+    if not messages:
+        return 0
+    
     tokens_per_message = 3
     tokens_per_name = 1
     num_tokens = 0
@@ -136,60 +143,35 @@ def tokens_remaining(messages, use_model_4):
         return model_35_token_limit - num_tokens_from_messages(messages, use_model_4)
 
 # OPENAI API 调用
-def fetch_chat_response(use_model_4, messages, temperature=1, max_tokens=None, presence_penalty=0, frequency_penalty=0, stop=None, logit_bias=None, external_api_key=None):
-    chat_completion_args = {
-        'model': model_4_name if use_model_4 else model_35_name,
-        'messages': messages,
-    }
-    if temperature != 1:
-        chat_completion_args['temperature'] = temperature
-    if max_tokens is not None:
-        max_tokens = min(int(max_tokens), tokens_remaining(messages, use_model_4))
-        chat_completion_args['max_tokens'] = max_tokens
-    if presence_penalty != 0:
-        chat_completion_args['presence_penalty'] = presence_penalty
-    if frequency_penalty != 0:
-        chat_completion_args['frequency_penalty'] = frequency_penalty
-    if stop is not None:
-        chat_completion_args['stop'] = stop
-    if logit_bias is not None:
-        logit_bias = { id: value for key, value in logit_bias.items() for id in encode(key, use_model_4) }
-        chat_completion_args['logit_bias'] = logit_bias
-
+def get_chat_response(params, external_api_key=None):
     if external_api_key is None:
-        return client.chat.completions.create(**chat_completion_args)
+        return client.chat.completions.create(**params)
     else:
         temp_client = OpenAI(api_key=external_api_key)
-        return temp_client.chat.completions.create(**chat_completion_args)
+        return temp_client.chat.completions.create(**params)
 
-def parse_chat_response(response, use_model_4, use_site_api_key):
+def parse_chat_response(response, use_model_4, use_default_api_key):
     message = response.choices[0].message.content
     if response.usage is not None:
-        if use_site_api_key:
+        if use_default_api_key:
             update_counter(use_model_4, (response.usage.total_tokens or 0))
             if use_model_4:
-                global site_api_key_completion_tokens_model_4
-                global site_api_key_prompt_tokens_model_4
-                global site_api_key_total_tokens_model_4
-                global site_api_key_requests_model_4
-                site_api_key_completion_tokens_model_4 += (response.usage.completion_tokens or 0)
-                site_api_key_prompt_tokens_model_4 += (response.usage.prompt_tokens or 0)
-                site_api_key_total_tokens_model_4 += (response.usage.total_tokens or 0)
-                site_api_key_requests_model_4 += 1
+                global default_api_key_completion_tokens_model_4, default_api_key_prompt_tokens_model_4
+                global default_api_key_total_tokens_model_4, default_api_key_requests_model_4
+                default_api_key_completion_tokens_model_4 += (response.usage.completion_tokens or 0)
+                default_api_key_prompt_tokens_model_4 += (response.usage.prompt_tokens or 0)
+                default_api_key_total_tokens_model_4 += (response.usage.total_tokens or 0)
+                default_api_key_requests_model_4 += 1
             else:
-                global site_api_key_completion_tokens_model_35
-                global site_api_key_prompt_tokens_model_35
-                global site_api_key_total_tokens_model_35
-                global site_api_key_requests_model_35
-                site_api_key_completion_tokens_model_35 += (response.usage.completion_tokens or 0)
-                site_api_key_prompt_tokens_model_35 += (response.usage.prompt_tokens or 0)
-                site_api_key_total_tokens_model_35 += (response.usage.total_tokens or 0)
-                site_api_key_requests_model_35 += 1
+                global default_api_key_completion_tokens_model_35, default_api_key_prompt_tokens_model_35
+                global default_api_key_total_tokens_model_35, default_api_key_requests_model_35
+                default_api_key_completion_tokens_model_35 += (response.usage.completion_tokens or 0)
+                default_api_key_prompt_tokens_model_35 += (response.usage.prompt_tokens or 0)
+                default_api_key_total_tokens_model_35 += (response.usage.total_tokens or 0)
+                default_api_key_requests_model_35 += 1
         else:
-            global custom_api_key_completion_tokens
-            global custom_api_key_prompt_tokens
-            global custom_api_key_total_tokens
-            global custom_api_key_requests
+            global custom_api_key_completion_tokens, custom_api_key_prompt_tokens
+            global custom_api_key_total_tokens, custom_api_key_requests
             custom_api_key_completion_tokens += (response.usage.completion_tokens or 0)
             custom_api_key_prompt_tokens += (response.usage.prompt_tokens or 0)
             custom_api_key_total_tokens += (response.usage.total_tokens or 0)
@@ -230,85 +212,142 @@ def text_to_speech(text, lang, filename):
         out.write(response.audio_content)
         # print('TTS 测试时间：' + str(time.time() - test_time))
 
+def get_wav_duration(filename):
+    audio_path = os.path.join(work_dir, f'{filename}.wav')
+    with wave.open(audio_path, 'r') as f:
+        frames = f.getnframes()
+        rate = f.getframerate()
+        duration = frames / float(rate)
+    return duration
+
+# Http 相关
+def parse_request_data(data):
+    use_model_4 = data.get('use_model_4', False)
+    use_default_api_key = data.get('key_type', '').lower() == 'default'
+    messages = data.get('messages', [])
+    params = {
+        'model': model_4_name if use_model_4 else model_35_name,
+        'messages': messages,
+    }
+    temperature = data.get('temperature')
+    if temperature:
+        params['temperature'] = float(temperature)
+    max_tokens = data.get('max_tokens')
+    if max_tokens:
+        params['max_tokens'] = min(int(max_tokens), tokens_remaining(messages, use_model_4))
+    presence_penalty = data.get('presence_penalty')
+    if presence_penalty:
+        params['presence_penalty'] = float(presence_penalty)
+    frequency_penalty = data.get('frequency_penalty')
+    if frequency_penalty:
+        params['frequency_penalty'] = float(frequency_penalty)
+    stop_sequences = data.get('stop_sequences')
+    if stop_sequences:
+        params['stop'] = stop_sequences
+    logit_bias = data.get('logit_bias')
+    if logit_bias:
+        params['logit_bias'] = { id: value for key, value in logit_bias.items() for id in encode(key, use_model_4) }
+
+    return use_model_4, use_default_api_key, params
+
+def call_openai_api(use_model_4, use_default_api_key, params, external_api_key=None):
+    if use_default_api_key:
+        if is_limit_reached(use_model_4):
+            # Error code 1: 本站 api-key 超过使用限制
+            return {'succeed': False, 'error_code': 1}
+    messages = params.get('messages', [])
+    if tokens_remaining(messages, use_model_4) <= 0:
+        # Error code 5: 消息过长
+        return {'succeed': False, 'error_code': 5}
+    
+    try:
+        if use_default_api_key:
+            response = get_chat_response(params)
+        else:
+            if external_api_key is None:
+                # Error code 2: 外部 api-key 为空或无效
+                return {'succeed': False, 'error_code': 2}
+            response = get_chat_response(params, external_api_key)
+    except openai.AuthenticationError as e:
+        # Error code 1: 本站 api-key 欠费或无效，按照超过使用限制处理
+        # （因为本站 api-key 的任何信息都应避免暴露，所以相关错误统一返回超过使用限制）
+        # Error code 2: 外部 api-key 为空或无效
+        return {'succeed': False, 'error_code': 1 if use_default_api_key else 2}
+    except openai.RateLimitError as e:
+        # Error code 3: api-key 一定时间内使用太过频繁
+        return {'succeed': False, 'error_code': 3}
+    except (openai.APIError, openai.APITimeoutError, openai.APIConnectionError, openai.InternalServerError) as e:
+        # Error code 4: OPENAI API 服务异常
+        return {'succeed': False, 'error_code': 4}
+    except Exception as e:
+        # Error code 0: 未知错误
+        # e.g. openai.BadRequestError
+        print(e)
+        return {'succeed': False, 'error_code': 0, 'message': str(e)}
+    
+    message = parse_chat_response(response, use_model_4, use_default_api_key)
+    return {'succeed': True, 'message': message}
+
+def create_generator(message, id, lang):
+    global audio_length_avg, video_generation_time_avg
+
+    message_no_code_block = remove_code_block(message)
+    text_to_speech(message_no_code_block, lang, id)
+    audio_length = get_wav_duration(id)
+    duration_ratio = video_generation_time_avg / audio_length_avg
+    duration = audio_length * duration_ratio
+    yield f"data: {json.dumps({'status': 'wip', 'duration': duration})}\n\n"
+
+    time_start = time.time()
+    faceVideoMaker.makeVideo(id)
+    video_generation_time = time.time() - time_start
+    audio_length_avg = (audio_length_avg + audio_length) / 2
+    video_generation_time_avg = (video_generation_time_avg + video_generation_time) / 2
+    yield f"data: {json.dumps({'status': 'done', 'message': escape(message), 'video_url': f'/{work_dir}/{id}.mp4'})}\n\n"
+
 # Flask 路由
 @app.route('/')
 def index():
     return app.send_static_file('index.html')
 
-@app.route('/api/message', methods=['POST'])
-def message_v3():
+@app.route('/api/message_no_video', methods=['POST'])
+def message_no_video():
     data = request.json
-    use_model_4 = data.get('use_model_4', False)
-    use_site_api_key = data.get('key_type', '').lower() == 'default'
-    if use_site_api_key:
-        if is_limit_reached(use_model_4):
-            # Error code 1: 本站 api-key 超过使用限制
-            return jsonify({'error_code': 1}), 200
-    messages = data.get('messages')
-    if tokens_remaining(messages, use_model_4) <= 0:
-        # Error code 5: 消息过长
-        return jsonify({'error_code': 5}), 200
-    request_params = {
-        'messages': messages,
-    }
-    temperature = data.get('temperature')
-    if temperature:
-        request_params['temperature'] = int(temperature)
-    max_tokens = data.get('max_tokens')
-    if max_tokens:
-        request_params['max_tokens'] = int(max_tokens)
-    presence_penalty = data.get('presence_penalty')
-    if presence_penalty:
-        request_params['presence_penalty'] = float(presence_penalty)
-    frequency_penalty = data.get('frequency_penalty')
-    if frequency_penalty:
-        request_params['frequency_penalty'] = float(frequency_penalty)
-    stop_sequences = data.get('stop_sequences')
-    if stop_sequences:
-        request_params['stop'] = stop_sequences
-    logit_bias = data.get('logit_bias')
-    if logit_bias:
-        request_params['logit_bias'] = logit_bias
-    try:
-        if use_site_api_key:
-            response = fetch_chat_response(use_model_4, **request_params)
-        else:
-            api_key = data.get('api_key')
-            if not api_key:
-                # Error code 2: 外部 api-key 为空或无效
-                return jsonify({'error_code': 2}), 200
-            request_params['external_api_key'] = api_key
-            response = fetch_chat_response(use_model_4, **request_params)
-    except openai.AuthenticationError as e:
-        # Error code 1: 本站 api-key 欠费或无效，按照超过使用限制处理
-        # （因为本站 api-key 的任何信息都应避免暴露，所以相关错误统一返回超过使用限制）
-        # Error code 2: 外部 api-key 为空或无效
-        return jsonify({'error_code': 1 if use_site_api_key else 2}), 200
-    except openai.RateLimitError as e:
-        # Error code 3: api-key 一定时间内使用太过频繁
-        return jsonify({'error_code': 3}), 200
-    except (openai.APIError, openai.APITimeoutError, openai.APIConnectionError, openai.InternalServerError) as e:
-        # Error code 4: OPENAI API 服务异常
-        return jsonify({'error_code': 4}), 200
-    except Exception as e:
-        # Error code 0: 未知错误
-        # e.g. openai.BadRequestError
-        print(e)
-        return jsonify({'error_code': 0, 'message': str(e)}), 200
+    use_model_4, use_default_api_key, params = parse_request_data(data)
+    response = call_openai_api(use_model_4, use_default_api_key, params, data.get('api_key'))
+    if response.get('succeed'):
+        response['message'] = escape(response['message'])
+        return jsonify(response), 200
+    else:
+        return jsonify(response), 200
+
+@app.route('/api/message_video', methods=['POST'])
+def message_video_step1():
+    data = request.json
+    use_model_4, use_default_api_key, params = parse_request_data(data)
+    response = call_openai_api(use_model_4, use_default_api_key, params, data.get('api_key'))
+    if not response.get('succeed'):
+        return jsonify(response), 200
     
-    message = parse_chat_response(response, use_model_4, use_site_api_key)
-
-    is_video_mode = data.get('video')
-    if not is_video_mode:
-        return jsonify({'message': escape(message)}), 200
-
+    message = response['message']
+    message_id = str(uuid.uuid4())[:8]
     lang = data.get('language_code')
-    message_no_code_block = remove_code_block(message)
-    id = str(uuid.uuid4())[:8]
-    text_to_speech(message_no_code_block, lang, id)
-    faceVideoMaker.makeVideo(id)
 
-    return jsonify({'message': escape(message), 'video_url': f'/{work_dir}/{id}.mp4'}), 200
+    message_id_to_generators[message_id] = create_generator(message, message_id, lang)
+    response["message_id"] = message_id
+    return jsonify(response), 200
+    
+
+@app.route('/api/wait_video', methods=['GET'])
+def message_video_step2():
+    message_id = request.args.get('message_id', "0")
+    generator = message_id_to_generators.pop(message_id, None)
+    if generator is None:
+        def generate():
+            # Error code 0: 未知错误 - 未找到对应的 message_id
+            yield f"data: {json.dumps({'status': 'error', 'error_code': 0})}\n\n"
+        return Response(generate(), content_type='text/event-stream')
+    return Response(generator, content_type='text/event-stream')
 
 @app.route('/api/tokens', methods=['POST'])
 def get_tokens():

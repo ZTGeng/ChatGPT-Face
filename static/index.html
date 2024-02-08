@@ -151,7 +151,7 @@
                         </div>
                     </div>
                     <input type="range" class="form-range" v-model="frequency_penalty" min="-2" max="2" step="0.1" id="frequencypenaltyBar">
-                    <span class="text-warning me-2"><svg v-html="warning_svg_html" width="16" height="16"></svg></span>
+                    <span class="text-warning me-2"><svg v-html="warn_svg_html" width="16" height="16"></svg></span>
                     <small>{{ frequency_penalty_warning }}</small>
                 </div>
 
@@ -196,7 +196,7 @@
                             </div>
                         </div>
                     </div>
-                    <span class="text-warning me-2"><svg v-html="warning_svg_html" width="16" height="16"></svg></span>
+                    <span class="text-warning me-2"><svg v-html="warn_svg_html" width="16" height="16"></svg></span>
                     <small>{{ logit_bias_warning }}</small>
                 </div>
 
@@ -270,6 +270,11 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="progress mb-2" role="progressbar" aria-label="reply_progress" v-show="show_progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" :style="{ width: progress_bar_current }"></div>
+                    </div>
+                    
                     <div class="d-flex" style="padding-bottom: 150px">
                         <div class="form-check me-5" v-show="content_messages.length > 0">
                             <input class="form-check-input" type="checkbox" value="" id="selectAllCheck" @click="selectAll" checked>
@@ -279,9 +284,6 @@
                                     <svg v-html="info_svg_html" width="16" height="16"></svg>
                                 </span>
                             </label>
-                        </div>
-                        <div class="spinner-border text-secondary" role="status" v-if="is_busy">
-                            <span class="visually-hidden">Loading...</span>
                         </div>
                         <div class="d-flex align-items-end flex-column small ms-auto" v-if="show_delay_message">
                             <a class="btn btn-outline-secondary btn-sm" href="#delayMessage" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="delayMessage">{{ delay_message_hint }}</a>
@@ -301,7 +303,12 @@
                         :placeholder="message_input_placeholder" 
                         v-model="message_input"
                         @keydown.enter.shift.prevent="sendMessages "></textarea>
-                    <button class="btn btn-outline-secondary" type="button" id="sendButton" @click="sendMessages" :disabled="is_busy">{{ send_message_button_text }}</button>
+                    <button class="btn btn-outline-secondary" type="button" id="sendButton" @click="sendMessages" :disabled="is_busy">
+                        <span v-if="!is_busy">{{ send_message_button_text }}</span>
+                        <div class="spinner-border spinner-border text-secondary" role="status" v-if="is_busy">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </button>
                 </div>
             </div>
         </nav>
@@ -410,7 +417,6 @@
                         3: 'The API usage is temporarily restricted due to excessive access, please try again later.',
                         4: 'OPENAI server response timed out, please try again later.',
                         5: 'Message too long. Please reduce the selected historical messages.'
-                        
                     },
                     video_mode_button_on: 'Enable Video',
                     video_mode_button_off: 'Disable Video',
@@ -484,6 +490,10 @@
                     current_messages_tokens_fetching: false,
                     message_input: '',
                     socket: null,
+                    show_progress: false,
+                    progress_current_seconds: 0,
+                    progress_total_seconds: 1,
+                    progress_bar_current: '1%',
                     is_busy: false,
                     is_video_mode: true,
                     voice_language: 'en',
@@ -506,10 +516,10 @@
                                         <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
                                         <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
                                     </svg>`,
-                    warning_svg_html: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-triangle" viewBox="0 0 16 16">
-                                            <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.146.146 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 0 1-.054.06.116.116 0 0 1-.066.017H1.146a.115.115 0 0 1-.066-.017.163.163 0 0 1-.054-.06.176.176 0 0 1 .002-.183L7.884 2.073a.147.147 0 0 1 .054-.057zm1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566z"/>
-                                            <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995z"/>
-                                        </svg>`,
+                    warn_svg_html: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-triangle" viewBox="0 0 16 16">
+                                        <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.146.146 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 0 1-.054.06.116.116 0 0 1-.066.017H1.146a.115.115 0 0 1-.066-.017.163.163 0 0 1-.054-.06.176.176 0 0 1 .002-.183L7.884 2.073a.147.147 0 0 1 .054-.057zm1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566z"/>
+                                        <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995z"/>
+                                    </svg>`,
                 };
                 return { ...localized, ...unlocalized};
             },
@@ -517,9 +527,16 @@
                 content_messages() {
                     return this.messages.filter(message => message.role === 'assistant' || message.role === 'user');
                 },
+                progress_current() {
+                    return this.progress_current_seconds / this.progress_total_seconds * 100;
+                },
             },
             watch: {
-
+                progress_current(newValue, oldValue) {
+                    if (newValue > oldValue) {
+                        this.progress_bar_current = `${(Math.max(1, Math.min(99, newValue))).toFixed(1)}%`;
+                    }
+                },
             },
             methods: {
                 systemAndCheckedMessages() {
@@ -557,14 +574,15 @@
                         use_model_4: this.use_model_4,
                         key_type: this.api_key_choice,
                         messages: includedMessages,
-                        video: this.is_video_mode,
-                        temperature: this.temperature,
                     }
                     if (this.is_video_mode) {
                         data.language_code = this.voice_language;
                     }
                     if (this.api_key_choice === 'custom') {
                         data.api_key = this.api_key_custom;
+                    }
+                    if (this.temperature !== 1) {
+                        data.temperature = this.temperature;
                     }
                     if (!this.max_tokens_no_limit) {
                         data.max_tokens = this.max_tokens;
@@ -591,11 +609,18 @@
                     this.is_busy = true;
                     this.current_messages_tokens = null;
 
-                    var delayMessageTimeout = setTimeout(() => {
+                    if (this.is_video_mode) {
+                        this.call_message_video(data);
+                    } else {
+                        this.call_message_no_video(data);
+                    }
+                },
+                call_message_no_video(data) {
+                    const delayMessageTimeout = setTimeout(() => {
                         this.show_delay_message = true;
                     }, this.delay_message_delay_ms);
-                    
-                    axios.post('/api/message', data)
+
+                    axios.post('/api/message_no_video', data)
                         .then(response => {
                             this.is_busy = false;
                             clearTimeout(delayMessageTimeout);
@@ -608,27 +633,130 @@
                                 if ("message" in response.data) {
                                     console.log(response.data.message)
                                 }
-                                return
-                            }
-                            this.messages.push({
-                                content: response.data.message,
-                                role: 'assistant',
-                                is_checked: true,
-                            });
-                            if (response.data.video_url) {
-                                this.playUrl(response.data.video_url);
+                            } else {
+                                this.messages.push({
+                                    content: response.data.message,
+                                    role: 'assistant',
+                                    is_checked: true,
+                                });
                             }
                         })
                         .catch(error => {
+                            this.is_busy = false;
+                            clearTimeout(delayMessageTimeout);
+                            // this.show_delay_message = false;
                             this.messages.push({
                                 content: this.server_error_message,
                                 role: 'error'
                             });
+                            console.log(error);
+                        });
+                },
+                call_message_video(data) {
+                    const delayMessageTimeout = setTimeout(() => {
+                        this.show_delay_message = true;
+                    }, this.delay_message_delay_ms);
+
+                    axios.post('/api/message_video', data)
+                        .then(response => {
+                            if ("error_code" in response.data) {
+                                this.is_busy = false;
+                                clearTimeout(delayMessageTimeout);
+                                // this.show_delay_message = false;
+                                this.messages.push({
+                                    content: this.error_codes[response.data.error_code],
+                                    role: 'error'
+                                });
+                                if ("message" in response.data) {
+                                    console.log(response.data.message)
+                                }
+                            } else {
+                                messageId = response.data.message_id;
+                                this.call_wait_video(messageId, delayMessageTimeout);
+                            }
+                        })
+                        .catch(error => {
                             this.is_busy = false;
                             clearTimeout(delayMessageTimeout);
                             // this.show_delay_message = false;
+                            this.messages.push({
+                                content: this.server_error_message,
+                                role: 'error'
+                            });
                             console.log(error);
                         });
+                },
+                call_wait_video(messageId, delayMessageTimeout) {
+                    this.show_progress = true;
+                    let progressInterval;
+
+                    const eventSource = new EventSource("/api/wait_video?message_id=" + messageId);
+                    eventSource.onmessage = (event) => {
+                        const response = JSON.parse(event.data);
+                        switch (response.status) {
+                            case 'wip':
+                                this.progress_total_seconds = response.duration;
+                                progressInterval = setInterval(() => {
+                                    this.progress_current_seconds += 0.1;
+                                    if (this.progress_current_seconds >= this.progress_total_seconds) {
+                                        clearInterval(progressInterval);
+                                    }
+                                }, 100);
+                                break;
+                            case 'done':
+                                clearInterval(progressInterval);
+                                this.progress_bar_current = '100%';
+
+                                this.messages.push({
+                                    content: response.message,
+                                    role: 'assistant',
+                                    is_checked: true,
+                                });
+                                this.playUrl(response.video_url);
+
+                                eventSource.close();
+                                this.is_busy = false;
+                                clearTimeout(delayMessageTimeout);
+                                // this.show_delay_message = false;
+                                this.show_progress = false;
+                                this.resetProgressBar();
+                                break;
+                            case 'error':
+                                this.messages.push({
+                                    content: this.error_codes[response.error_code],
+                                    role: 'error'
+                                });
+                                if (response.message) {
+                                    console.log(response.message)
+                                }
+
+                                eventSource.close();
+                                this.is_busy = false;
+                                clearTimeout(delayMessageTimeout);
+                                // this.show_delay_message = false;
+                                this.show_progress = false;
+                                clearInterval(progressInterval);
+                                this.resetProgressBar();
+                                break;
+                            default:
+                                break;
+                        }
+                    };
+                    eventSource.onerror = (event) => {
+                        this.messages.push({
+                            content: this.server_error_message,
+                            role: 'error'
+                        });
+                        console.log(event);
+
+                        eventSource.close();
+                        this.is_busy = false;
+                        clearTimeout(delayMessageTimeout);
+                        // this.show_delay_message = false;
+                        this.show_progress = false;
+                        clearInterval(progressInterval);
+                        this.resetProgressBar();
+                    };
                 },
                 calculateMessagesTokens() {
                     const includedMessages = this.systemAndCheckedMessages();
@@ -727,6 +855,11 @@
                             this.delay_message = response.data;
                         })
                         .catch(error => { /* 使用默认值 */ });
+                },
+                resetProgressBar() {
+                    this.progress_current_seconds = 0;
+                    this.progress_total_seconds = 1;
+                    this.progress_bar_current = '1%';
                 },
             },
             mounted() {
