@@ -272,7 +272,7 @@
                     </div>
                     
                     <div class="progress mb-2" role="progressbar" aria-label="reply_progress" v-show="show_progress">
-                        <div class="progress-bar progress-bar-striped progress-bar-animated" :style="{ width: progress_bar_current }"></div>
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" :style="{ width: progress_display.toFixed(1) + '%' }"></div>
                     </div>
                     
                     <div class="d-flex" style="padding-bottom: 150px">
@@ -491,9 +491,9 @@
                     message_input: '',
                     socket: null,
                     show_progress: false,
-                    progress_current_seconds: 0,
+                    progress_past_seconds: 0,
                     progress_total_seconds: 1,
-                    progress_bar_current: '1%',
+                    progress_display: 1,
                     is_busy: false,
                     is_video_mode: true,
                     voice_language: 'en',
@@ -528,13 +528,13 @@
                     return this.messages.filter(message => message.role === 'assistant' || message.role === 'user');
                 },
                 progress_current() {
-                    return this.progress_current_seconds / this.progress_total_seconds * 100;
+                    return this.progress_past_seconds / this.progress_total_seconds * 100;
                 },
             },
             watch: {
-                progress_current(newValue, oldValue) {
-                    if (newValue > oldValue) {
-                        this.progress_bar_current = `${(Math.max(1, Math.min(99, newValue))).toFixed(1)}%`;
+                progress_current(value) {
+                    if (value > this.progress_display) {
+                        this.progress_display = Math.min(99, value);
                     }
                 },
             },
@@ -691,11 +691,11 @@
                     this.show_progress = true;
                     this.progress_total_seconds = duration;
                     let progressInterval = setInterval(() => {
-                        this.progress_current_seconds += 0.1;
-                        if (this.progress_current_seconds >= this.progress_total_seconds) {
+                        this.progress_past_seconds += 0.5;
+                        if (this.progress_past_seconds >= this.progress_total_seconds) {
                             clearInterval(progressInterval);
                         }
-                    }, 100);
+                    }, 500);
 
                     const eventSource = new EventSource("/api/wait_video?message_id=" + messageId);
                     eventSource.onmessage = (event) => {
@@ -703,17 +703,17 @@
                         switch (response.status) {
                             case 'wip':
                                 clearInterval(progressInterval);
-                                this.progress_total_seconds = this.progress_current_seconds + response.duration;
+                                this.progress_total_seconds = this.progress_past_seconds + response.duration;
                                 progressInterval = setInterval(() => {
-                                    this.progress_current_seconds += 0.1;
-                                    if (this.progress_current_seconds >= this.progress_total_seconds) {
+                                    this.progress_past_seconds += 0.5;
+                                    if (this.progress_past_seconds >= this.progress_total_seconds) {
                                         clearInterval(progressInterval);
                                     }
-                                }, 100);
+                                }, 500);
                                 break;
                             case 'done':
                                 clearInterval(progressInterval);
-                                this.progress_bar_current = '100%';
+                                this.progress_display = 100;
 
                                 this.messages.push({
                                     content: response.message,
@@ -865,9 +865,9 @@
                         .catch(error => { /* 使用默认值 */ });
                 },
                 resetProgressBar() {
-                    this.progress_current_seconds = 0;
+                    this.progress_past_seconds = 0;
                     this.progress_total_seconds = 1;
-                    this.progress_bar_current = '1%';
+                    this.progress_display = 1;
                 },
             },
             mounted() {
