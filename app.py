@@ -16,6 +16,11 @@ files_to_delete = []
 
 message_id_to_generators = {}
 
+# 根据文本长度推算视频合成时间
+text_length_avg_en = 1
+audio_video_total_time_avg_en = 1
+text_length_avg_zh = 1
+audio_video_total_time_avg_zh = 1
 # 根据语音长度推算视频合成时间
 audio_length_avg = 1
 video_generation_time_avg = 1
@@ -290,19 +295,30 @@ def call_openai_api(use_model_4, use_default_api_key, params, external_api_key=N
 
 def create_generator(message, id, lang):
     global audio_length_avg, video_generation_time_avg
+    global text_length_avg_zh, audio_video_total_time_avg_zh
+    global text_length_avg_en, audio_video_total_time_avg_en
 
+    time_before_tts = time.time()
     message_no_code_block = remove_code_block(message)
     text_to_speech(message_no_code_block, lang, id)
     audio_length = get_wav_duration(id)
     duration_ratio = video_generation_time_avg / audio_length_avg
     duration = audio_length * duration_ratio
+    time_tts = time.time() - time_before_tts
     yield f"data: {json.dumps({'status': 'wip', 'duration': duration})}\n\n"
 
-    time_start = time.time()
+    time_before_generation = time.time()
     faceVideoMaker.makeVideo(id)
-    video_generation_time = time.time() - time_start
+    time_generation = time.time() - time_before_generation
+
     audio_length_avg = (audio_length_avg + audio_length) / 2
-    video_generation_time_avg = (video_generation_time_avg + video_generation_time) / 2
+    video_generation_time_avg = (video_generation_time_avg + time_generation) / 2
+    if lang == 'zh':
+        text_length_avg_zh = (text_length_avg_zh + len(message_no_code_block)) / 2
+        audio_video_total_time_avg_zh = (audio_video_total_time_avg_zh + time_tts + time_generation) / 2
+    else:
+        text_length_avg_en = (text_length_avg_en + len(message_no_code_block)) / 2
+        audio_video_total_time_avg_en = (audio_video_total_time_avg_en + time_tts + time_generation) / 2
     yield f"data: {json.dumps({'status': 'done', 'message': escape(message), 'video_url': f'/{work_dir}/{id}.mp4'})}\n\n"
 
 # Flask 路由
@@ -335,6 +351,16 @@ def message_video_step1():
 
     message_id_to_generators[message_id] = create_generator(message, message_id, lang)
     response["message_id"] = message_id
+
+    message_no_code_block = remove_code_block(message)
+    if lang == 'zh':
+        duration_ratio = audio_video_total_time_avg_zh / text_length_avg_zh
+        duration = len(message_no_code_block) * duration_ratio
+    else:
+        duration_ratio = audio_video_total_time_avg_en / text_length_avg_en
+        duration = len(message_no_code_block) * duration_ratio
+    response["duration"] = duration
+
     return jsonify(response), 200
     
 

@@ -672,7 +672,8 @@
                                 }
                             } else {
                                 messageId = response.data.message_id;
-                                this.call_wait_video(messageId, delayMessageTimeout);
+                                duration = response.data.duration;
+                                this.call_wait_video(messageId, duration, delayMessageTimeout);
                             }
                         })
                         .catch(error => {
@@ -686,16 +687,23 @@
                             console.log(error);
                         });
                 },
-                call_wait_video(messageId, delayMessageTimeout) {
+                call_wait_video(messageId, duration, delayMessageTimeout) {
                     this.show_progress = true;
-                    let progressInterval;
+                    this.progress_total_seconds = duration;
+                    let progressInterval = setInterval(() => {
+                        this.progress_current_seconds += 0.1;
+                        if (this.progress_current_seconds >= this.progress_total_seconds) {
+                            clearInterval(progressInterval);
+                        }
+                    }, 100);
 
                     const eventSource = new EventSource("/api/wait_video?message_id=" + messageId);
                     eventSource.onmessage = (event) => {
                         const response = JSON.parse(event.data);
                         switch (response.status) {
                             case 'wip':
-                                this.progress_total_seconds = response.duration;
+                                clearInterval(progressInterval);
+                                this.progress_total_seconds = this.progress_current_seconds + response.duration;
                                 progressInterval = setInterval(() => {
                                     this.progress_current_seconds += 0.1;
                                     if (this.progress_current_seconds >= this.progress_total_seconds) {
